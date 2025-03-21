@@ -1,0 +1,3299 @@
+require("dotenv").config();
+require("express-async-errors");
+const express = require("express");
+// const session = require("express-session");
+const app = express();
+const path = require("path");
+const { logger, logEvents } = require("./middleware/logger");
+const errorHandler = require("./middleware/errorHandler");
+const cookieParser = require("cookie-parser");
+const cors = require("cors");
+const corsOptions = require("./config/corsOptions");  //
+const connectDB = require("./config/dbConn");
+const mongoose = require("mongoose");
+const PORT = process.env.PORT || 3500;
+const fs = require("fs");
+const multer = require("multer");
+const openai = require("./config/openaiConfig"); //
+// const { Configuration, OpenAIApi } = require('openai');
+// const { Configuration } = require('openai');
+const pdfService = require("./pdf-service");
+// const { LLMChain } = require("langchain/chains");
+// const { OpenAI } = require("openai");
+const OpenAI = require("openai");
+// const { PromptTemplate } = require("@langchain/core");
+const { z } = require('zod');  
+const { zodFunction, zodResponseFormat } = require("openai/helpers/zod");
+const PDFDocument = require("pdfkit");
+const nodemailer = require("nodemailer");
+const User = require("./models/User");
+
+const ejs = require("ejs");
+// const passport = require("passport");
+// const GoogleStrategy = require("passport-google-oauth2").Strategy;
+
+console.log(process.env.NODE_ENV); //development
+
+// const User = require("./models/User");
+// const jwt = require("jsonwebtoken");
+
+connectDB();
+
+app.use(logger);
+
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET,
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: { secure: true },
+//   })
+// );
+
+// app.use(passport.initialize());
+// app.use(passport.session());
+
+function isLogedIn(req, res, next) {
+  req.user ? next() : res.sendStatus(401);
+}
+
+//ejs
+app.set("view engine", "ejs");
+app.use(express.urlencoded({ extended: false }));
+app.set("views", path.join(__dirname, "views"));
+app.use("/", express.static(path.join(__dirname, "public"))); //Za static fajlove
+
+//Premesti u rute
+//Ovo baca na gui za izbor mejlova
+// app.get(
+//   "/auth/google",
+//   passport.authenticate("google", { scope: ["email", "profile"] })
+// );
+
+//Kada se autentifikujemo dobro onda se ide na ovu stranicu
+// passport.use(
+//   new GoogleStrategy(
+//     {
+//       clientID: process.env.CLIENT_ID,
+//       clientSecret: process.env.CLIENT_SECRET,
+//       callbackURL: "https://localhost:5000/google/callback",
+//       passReqToCallback: true,
+//     },
+//     //Ova funkcija sluzi da se napravi novi user i da se pronadje
+//     async (request, accessToken, refreshToken, profile, done) => {
+//       const email = profile.emails[0].value;
+//       const foundUser = await User.findOne({ email }).exec();
+
+//       console.log(email);
+
+//       if (!foundUser) {
+//         // If the user does not exist, create a new user
+//         foundUser = await User.create({
+//           // googleId: profile.id,
+//           // username: profile.displayName,
+//           email: profile.emails[0].value,
+//         });
+//       }
+//       return done(null, user);
+
+//       // return done(null);
+//     }
+//   )
+// );
+// passport.use(
+//   new GoogleStrategy(
+//     {
+//       clientID: process.env.CLIENT_ID,
+//       clientSecret: process.env.CLIENT_SECRET,
+//       callbackURL: "http://localhost:5000/google/callback",
+//       passReqToCallback: true,
+//     },
+//     async function (request, accessToken, refreshToken, profile, done) {
+//       try {
+//         // Check if the user already exists in the database
+//         const existingUser = await User.findOne({
+//           googleId: profile.id,
+//         }).exec();
+
+//         if (existingUser) {
+//           // User exists, generate access and refresh tokens
+//           const accessToken = jwt.sign(
+//             {
+//               UserInfo: {
+//                 id: existingUser._id,
+//                 email: existingUser.email,
+//                 roles: existingUser.roles,
+//               },
+//             },
+//             process.env.ACCESS_TOKEN_SECRET,
+//             { expiresIn: "15m" }
+//           );
+
+//           const refreshToken = jwt.sign(
+//             { email: existingUser.email },
+//             process.env.REFRESH_TOKEN_SECRET,
+//             { expiresIn: "7d" }
+//           );
+
+//           // Return user with tokens
+//           return done(null, { accessToken, refreshToken });
+//         } else {
+//           // If user doesn't exist, create a new user in the database
+//           const newUser = new User({
+//             googleId: profile.id,
+//             email: profile.emails[0].value,
+//             name: profile.displayName,
+//             roles: ["user"], // Default role for new users
+//           });
+
+//           await newUser.save();
+
+//           // Generate tokens for the newly created user
+//           const accessToken = jwt.sign(
+//             {
+//               UserInfo: {
+//                 id: newUser._id,
+//                 email: newUser.email,
+//                 roles: newUser.roles,
+//               },
+//             },
+//             process.env.ACCESS_TOKEN_SECRET,
+//             { expiresIn: "15m" }
+//           );
+
+//           const refreshToken = jwt.sign(
+//             { email: newUser.email },
+//             process.env.REFRESH_TOKEN_SECRET,
+//             { expiresIn: "7d" }
+//           );
+
+//           // Return the new user with tokens
+//           return done(null, { accessToken, refreshToken });
+//         }
+//       } catch (err) {
+//         console.error(err);
+//         return done(err, false, { message: "Server error" });
+//       }
+//     }
+//   )
+// );
+
+// app.get(
+//   "/google/callback",
+//   passport.authenticate("google", {
+//     successRedirect: "/succcesLogin",
+//     failureRedirect: "/failLogin",
+//   })
+// );
+
+// app.get(
+//   "/google/callback",
+//   passport.authenticate("google", { session: false }),
+//   (req, res) => {
+//     if (req.user && req.user.accessToken && req.user.refreshToken) {
+//       // Set refreshToken in a cookie and send the accessToken as a JSON response
+//       res.cookie("jwt", req.user.refreshToken, {
+//         httpOnly: true,
+//         secure: true, // ensure HTTPS is used in production
+//         sameSite: "None",
+//         maxAge: 7 * 24 * 60 * 60 * 1000,
+//       });
+
+//       return res.json({ accessToken: req.user.accessToken });
+//     }
+
+//     res.status(400).json({ message: "Authentication failed" });
+//   }
+// );
+
+// passport.serializeUser(function (done) {
+//   done(null);
+// });
+
+// passport.deserializeUser(function (done) {
+//   done(null);
+// });
+
+// app.get("/succcesLogin", (req, res) => {
+//   res.status(200).json({ message: "Ulogovani ste!" });
+// });
+
+// app.get("/failLogin", isLogedIn, (req, res) => {
+//   res.status(400).json({ message: "Nije uspesno logovanje sa googlom" });
+// });
+
+//
+// const corsOptions = {
+//   origin: 'https://13.50.180.98:3000',  // Explicitly define the frontend address
+//   credentials: true,  // This allows cookies to be sent with requests
+//   optionsSuccessStatus: 200,  // Legacy browser support
+// };
+
+app.use(cors(corsOptions));
+
+app.use(express.json());
+
+app.use(cookieParser());
+
+app.use("/files", express.static("files")); //Za PDF-ove
+
+//Za PDF-ove
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./files");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now();
+    cb(null, uniqueSuffix + file.originalname);
+  },
+});
+
+require("./pdfDetails");
+const PdfSchema = mongoose.model("PdfDetails"); //Kolekcija za bazu
+const upload = multer({ storage: storage });
+
+// app.post("/upload-files", upload.single("file"), async (req, res) => {
+//   console.log(req.file);
+//   const title = req.body.title;
+//   const fileName = req.file.filename;
+//   try {
+//     await PdfSchema.create({ title: title, pdf: fileName });
+//     res.send({ status: "ok" });
+//   } catch (error) {
+//     res.json({ status: error });
+//   }
+// });
+
+//Vraca sve fajlove klijentu
+app.get("/get-files/:id", async (req, res) => { 
+  const { id } = req.params; 
+  try {
+    PdfSchema.find({ idKlijenta: id }).then((data) => {
+      res.send({ status: "ok", data: data });
+    });
+  } catch (error) {}
+});
+
+// Download file
+app.get("/files/:filename", (req, res) => {
+  const filePath = path.join(__dirname, "files", req.params.filename);
+  res.download(filePath, req.params.filename, (err) => {
+    if (err) {
+      console.error("Error downloading file:", err);
+      res.status(500).send("Error downloading file.");
+    }
+  });
+});
+
+// API to delete a file and its reference from MongoDB
+app.delete("/delete-file/:id", async (req, res) => {
+  try {
+    // Find the document by ID in the database
+    const pdf = await PdfSchema.findById(req.params.id);
+    const filePath = path.join(__dirname, "files", pdf.pdf);
+
+    // Remove the file from the file system
+    fs.unlink(filePath, async (err) => {
+      if (err) {
+        console.error("Error deleting file:", err);
+        return res
+          .status(500)
+          .send({ status: "error", message: "File deletion failed" });
+      }
+
+      // Remove the document from the database
+      await PdfSchema.findByIdAndDelete(req.params.id);
+      res.send({ status: "ok", message: "File deleted successfully" });
+    });
+  } catch (error) {
+    console.error("Error deleting PDF:", error);
+    res.status(500).send({ status: "error", message: "File not found" });
+  }
+});
+
+// <!-- <script>
+// var status = '<%- JSON.stringify(status) %>';
+
+// if (JSON.parse(status) == "verified") {
+//   if (confirm("Do u want to login?")) {
+//     window.location.href = "https://localhost:3000/";
+//   }
+// }
+// </script> -->
+
+// app.use("/", express.static(path.join(__dirname, "public")));
+// app.use("/css", express.static("dist"));
+
+app.use("/", require("./routes/root"));
+app.use("/auth", require("./routes/authRoutes"));
+app.use("/users", require("./routes/userRoutes"));
+app.use("/ciljevi", require("./routes/ciljeciRoutes"));
+app.use("/fizickeAktivnosti", require("./routes/fizickeAktivnostiRoute"));
+app.use("/ishrane", require("./routes/ishranaRoutes"));
+app.use("/namirnice", require("./routes/namirniceRoutes"));
+app.use("/mojDnevnik", require("./routes/mojDnevnikRoutes"));
+app.use("/prompts", require("./routes/promptRoutes"));
+
+//AI
+const client = new OpenAI({
+  apiKey: process.env.OPEN_AI_KEY,
+});
+// app.use("/openai", require("./routes/openaiRoutes")); //Ako hocemo preko rutera 
+
+// app.use("/openai", async (req, res) => {
+//   const { title } = req.body;
+
+//   //Jedan text prompt
+//   const description = await openai.chat.completions.create({
+//     model: "gpt-4",
+//     messages: [
+//       {
+//         role: "user",
+//         content: `${title}`,
+//       },
+//     ],
+//     max_tokens: 1000, // Povecaj jos ako treba
+//   });
+
+//   // console.log("Object:", description.choices[0].message.content);
+
+//   res.status(200).json({
+//     description: description.choices[0].message.content,
+//   });
+// });
+
+//Za admin chat
+app.post("/adminChat", async (req, res) => {
+  try {
+    const { title } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: "Potreno pitanje" });
+    }
+
+    const description = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "user",
+          content: `"${title}"`,
+        },
+      ],
+    });
+
+    let odgovor = description.choices[0]?.message?.content?.trim()
+    odgovor = odgovor.replace(/[#!&*ü!_?-@**]/g, "")
+
+    // console.log("OpenAI Response:", description.data);
+    res.status(200).json({
+      description: odgovor
+    });
+
+
+  } catch (error) {
+    console.error("Error generating description:", error);
+    res.status(500).json({ error: "An error occurred while generating the description" });
+  }
+});
+
+//Prompt
+// Kreiraj mi sedmodnevni plan ishrane sa ciljem Povećanje mišićne mase. Moja dnevna kalorijska vrednost iznosi 2665.52. Koji pokrivaju samo obroke: doručak, užina, ručak, užina, večera, a namirnice koje želim da koristim su: Narandža,Limun,Grejpfrut,Mandarina,Kukuruz,Malina,Borovnica,Kupina,Ribizla,Breskva,Šljiva,Trešnja,Kajsija,Višnja,Banana,Mango,Ananas,Papaja,Kivi,Jabuka,Kruška,Lubenica,Dinja,Spanać,Blitva,Kelj,Zelena Salata,Rukola,Matovilac,Celer,Šargarepa,Cvekla,Krompir,Batat,Rotkva,Bundeva,Tikvica,Krastavac,Crni luk,Beli luk,Praziluk,Paradajz,Paprika,Čili papričice,Grašak,Pasulj,Sočivo,Leblebija,Soja,Badem,Orasi,Lešnici,Indijski orah,Kikiriki,Suncokret,Lan,Susam,Semenke bundeve,Kravlje,Kozje,Sojino,Bademovo,Obični,Grčki,Voćni,Gauda,Edamer,Feta,Parmezan,Mozzarela,Rikota,Kisela Pavlaka,Slatka Pavlaka,Maslac,Govedina,Teletina,Svinjetina,Jagnjetina,Konjetina,Piletina,Ćuretina,Pačetina,Guščetina,Šaran,Som,Pastrmka,Smuđ,Deverika,Kečiga,Štuka,Losos,Tuna,Skuša,Bakalar,Škampi,Lignje,Šunka,Slanina,Kobasice,Salama,Pašteta,Mesni Narezak,Pileća,Prepeličja,Maslinovo,Suncokretovo,Kokosovo,Laneno,Ulje repice,Mlečni maslac (puter),Margarin,Voćni sokovi,Povrćni sokovi,Smutiji,Crna kafa,Zeleni čaj,Crni čaj,Biljni čaj,Kefir,Kiselo mleko. Volim naminice: , dok ne želim da uključim . Ispiši mi prvo neki kratak nutricionistički opis pa ispod plan ishrane dan ispod dana i na kraju jedan mali zaključak. Nemoj da ispisuješ ove karaktere: #, &, *,**, -,ü, !, _, ?,",'. Ispiši mi dan za danom Dan 1, Dan 2...
+//Jedan nacin - Original
+app.use("/openai", async (req, res) => { 
+  const { title, metaData: newData } = req.body;
+
+  // Jedan text prompt
+  const description = await openai.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+      {
+        role: "user",
+        content: `${title}`,
+      },
+    ],
+    max_tokens: 3000, // Povećaj još ako treba
+  });
+
+  const content = description.choices[0].message.content;
+  const content_ = description.choices[0].message.content;
+
+  // Generisanje PDF-a
+  const fileName = `${newData.primcilj}_${Date.now()}_${Math.floor(Math.random() * 100000000000)}.pdf`; // Ime datoteke
+  const filePath = `./files/${fileName}`;
+
+  // Koristi prazan buffer za čuvanje chunk-ova
+  const chunks = [];
+
+  pdfService.buildPDF(content, newData,
+    (chunk) => chunks.push(chunk), // Sakupljaj chunk-ove
+    async () => {
+      // Čuvanje PDF-a na disk
+      await fs.promises.writeFile(filePath, Buffer.concat(chunks));
+
+      // Upisivanje u bazu podataka
+      try {
+        await PdfSchema.create({ title: newData.primcilj, pdf: fileName, idKlijenta: newData.id, datumKreir: new Date() });
+        res.json({ status: "ok", message: "PDF je uspešno generisan i sačuvan.", fileName, mojPrompt: content_ });
+      } catch (error) {
+        console.error("Error saving to database:", error);
+        res.status(500).json({ status: "error", message: "Greška prilikom čuvanja u bazu." });
+      }
+    }
+  );
+});
+
+//
+// const joke = z.object({
+//   setup: z.string().describe("The setup of the joke"),
+//   punchline: z.string().describe("The punchline to the joke"),
+//   rating: z.number().optional().describe("How funny the joke is, from 1 to 10"),
+// });
+
+// // Kreiranje modela sa strukturiranim izlazom
+// const structuredLlm = openai.withStructuredOutput(joke);
+
+// // Middleware za generisanje šale
+// app.use('/joke', async (req, res) => {
+//   try {
+//     // Pozivamo model da generišemo šalu o mačkama
+//     const result = await structuredLlm.invoke("Tell me a joke about cats");
+
+//     // Validacija rezultata pomoću Zod-a
+//     const parsedResult = joke.parse(result); // Parsiranje rezultata sa zod validacijom
+
+//     // Vraćamo uspešan odgovor sa šalom
+//     res.json(parsedResult);  // Vraćamo strukturirani rezultat
+
+//   } catch (error) {
+//     // Ako dođe do greške tokom poziva modela ili validacije
+//     console.error('Error generating joke:', error);
+//     res.status(500).json({ error: 'An error occurred while generating the joke' });
+//   }
+// });
+
+//Kreiranje obroka po danima
+const MealSchema = z.object({
+  opis: z.string(),
+  sastojci: z.string(),
+  instrukcije: z.string(),
+  kalorije: z.number(),
+  cena: z.number(),
+  nutritivna_vrednost: z.string(),
+});
+
+//Kreiranje dana
+const generateDaySchema = (chosenObroci) => {
+  const daySchemaDefinition = { dan: z.string() };
+
+  if (chosenObroci.includes("doručak")) daySchemaDefinition.dorucak = MealSchema;
+  if (chosenObroci.includes("užina1")) daySchemaDefinition.uzina1 = MealSchema;
+  if (chosenObroci.includes("ručak")) daySchemaDefinition.rucak = MealSchema;
+  if (chosenObroci.includes("užina2")) daySchemaDefinition.uzina2 = MealSchema;
+  if (chosenObroci.includes("večera")) daySchemaDefinition.vecera = MealSchema;
+
+  return z.object(daySchemaDefinition);
+};
+
+
+app.post("/generate-plan", async (req, res) => {
+  const { brojDana, obroci } = req.body;
+
+  if (!brojDana || typeof brojDana !== "number") {
+    return res.status(400).json({ message: "Molimo unesite validan broj dana." });
+  }
+
+  const validObroci = ["doručak", "užina1", "ručak", "užina2", "večera"];
+  const chosenObroci = Array.isArray(obroci) && obroci.every(obrok => validObroci.includes(obrok))
+    ? obroci
+    : ["doručak", "užina1", "ručak", "užina2", "večera"];
+
+  const obrociPrompt = chosenObroci.map(obrok => {
+    switch (obrok) {
+      case "doručak":
+        return "doručak";
+      case "užina1":
+        return "užina";
+      case "ručak":
+        return "ručak";
+      case "užina2":
+        return "druga užina";
+      case "večera":
+        return "večera";
+      default:
+        return obrok;
+    }
+  }).join(", ");
+
+  const DaySchema = generateDaySchema(chosenObroci);
+  const FullWeekSchema = z.object({
+    days: z.array(DaySchema),
+  });
+
+  try {
+    const completion = await client.beta.chat.completions.parse({
+      model: 'gpt-4o-2024-08-06',
+      messages: [
+        {
+          role: "system",
+          content: "Ti si korisni nutricionista. Generiši plan ishrane u JSON formatu koristeći samo zadatu šemu. Nazivi dana treba da budu 'Dan 1', 'Dan 2', i tako dalje, a ne imena dana u nedelji.",
+        },
+        {
+          role: "user",
+          content: `Napravi plan ishrane za ${brojDana} dana sa sledećim obrocima: ${obrociPrompt}. Nemoj uključivati obroke koji nisu navedeni.`,
+        },
+      ],
+      response_format: zodResponseFormat(FullWeekSchema, 'mealPlan'),
+    });
+
+    const message = completion.choices[0]?.message;
+    if (message?.parsed) {
+      console.log("Generisani plan ishrane:", message.parsed);
+      res.json(message.parsed);
+    } else {
+      console.log("Odbijeno:", message.refusal);
+      res.json({ message: "Odbijeno", refusal: message.refusal });
+    }
+  } catch (error) {
+    console.error("Greška:", error);
+    res.status(500).json({ 
+      status: "error", 
+      message: "Greška u generisanju plana ishrane." 
+    });
+  }
+});
+
+//Ovo radi samo ga optimizuj!
+app.use("/op", async (req, res) => {  
+
+  const description = await openai.chat.completions.create({
+    model: "gpt-4",
+    messages: [
+      { role: "system", content: "Ti si asistent za planiranje ishrane." },
+      {  
+        role: "user", 
+        content: `Kreiraj mi trodnevni plan ishrane sa ciljem Mršavljenje. Moja dnevna kalorijska vrednost iznosi 2566.3. Namirnice koje preferiram u ishrani: meso, mleko. Namirnice koje ne preferiram u ishrani: hleb.
+        
+        Struktura plana ishrane treba biti sledeća:
+        - Naslov: Trodnevni Plan Ishrane za Mršavljenje
+        - Uvod: Kratki uvodni tekst o planu ishrane 
+        - Dan 1:
+          - Doručak:
+            - Opis: opis doručka
+            - Sastojci: sastojci doručka
+            - Instrukcije: instrukcije pripreme doručka
+            - Kalorije: broj kalorija tog doručka
+          - Užina 1:
+            - Opis: opis užine
+            - Sastojci: sastojci užine
+            - Instrukcije: instrukcije pripreme užine
+            - Kalorije: broj kalorija te užine
+          - Ručak:
+            - Opis: opis ručka
+            - Sastojci: sastojci ručka
+            - Instrukcije: instrukcije pripreme ručka
+            - Kalorije: broj kalorija te ručka
+          - Užina 2:
+            - Opis: opis užine
+            - Sastojci: sastojci užine
+            - Instrukcije: instrukcije pripreme užine
+            - Kalorije: broj kalorija te užine
+          - Večera:
+            - Opis: opis večere
+            - Sastojci: sastojci večere
+            - Instrukcije: instrukcije pripreme večere
+            - Kalorije: broj kalorija te večere
+            
+        - Dan 2:
+          - Doručak:
+            - Opis: opis doručka
+            - Sastojci: sastojci doručka
+            - Instrukcije: instrukcije pripreme doručka
+            - Kalorije: broj kalorija tog doručka
+          - Užina 1:
+            - Opis: opis užine
+            - Sastojci: sastojci užine
+            - Instrukcije: instrukcije pripreme užine
+            - Kalorije: broj kalorija te užine
+          - Ručak:
+            - Opis: opis ručka
+            - Sastojci: sastojci ručka
+            - Instrukcije: instrukcije pripreme ručka
+            - Kalorije: broj kalorija te ručka
+          - Užina 2:
+            - Opis: opis užine
+            - Sastojci: sastojci užine
+            - Instrukcije: instrukcije pripreme užine
+            - Kalorije: broj kalorija te užine
+          - Večera:
+            - Opis: opis večere
+            - Sastojci: sastojci večere
+            - Instrukcije: instrukcije pripreme večere
+            - Kalorije: broj kalorija te večere
+
+        - Dan 3:
+          - Doručak:
+            - Opis: opis doručka
+            - Sastojci: sastojci doručka
+            - Instrukcije: instrukcije pripreme doručka
+            - Kalorije: broj kalorija tog doručka
+          - Užina 1:
+            - Opis: opis užine
+            - Sastojci: sastojci užine
+            - Instrukcije: instrukcije pripreme užine
+            - Kalorije: broj kalorija te užine
+          - Ručak:
+            - Opis: opis ručka
+            - Sastojci: sastojci ručka
+            - Instrukcije: instrukcije pripreme ručka
+            - Kalorije: broj kalorija te ručka
+          - Užina 2:
+            - Opis: opis užine
+            - Sastojci: sastojci užine
+            - Instrukcije: instrukcije pripreme užine
+            - Kalorije: broj kalorija te užine
+          - Večera:
+            - Opis: opis večere
+            - Sastojci: sastojci večere
+            - Instrukcije: instrukcije pripreme večere
+            - Kalorije: broj kalorija te večere
+
+        - Zaključak: Završna motivacija za plan ishrane
+        
+        Svaki obrok treba da bude opisan detaljno, sa navedenim sastojcima, koracima za pripremu (instrukcijama), i tačnim brojem kalorija po obroku. Koristi tačno navedenu strukturu i stavi ključne reči kao 'Naslov:', 'Uvod:', 'Opis:', 'Sastojci:', 'Instrukcije:', 'Kalorije:' tačno u ovom formatu sa dvotačkom.
+        Ne smeš menjati ovu strukturu ni redosled elemenata. Svaki obrok treba biti detaljan i uključivati tačan broj kalorija. Svaki deo mora biti tačno kao što je opisano.` 
+      },
+    ],
+    max_tokens: 3500,
+  });
+
+  let content = description.choices[0].message.content;
+  content = content.replace(/[#!&*ü!_?-]/g, "");   //Ovde sam dodao -
+
+  console.log('DATA:', content)
+  // Main meal plan schema
+  const mealPlan = {
+    naslov: "",
+    uvod: "",
+    dani: [],
+    zakljucak: ""
+  };
+
+  // Parsing functions for each section
+  function parseTitle(line) {
+    if (line.startsWith("Naslov:")) {
+      mealPlan.naslov = line.replace("Naslov:", "").trim();
+    }
+  }
+
+  function parseIntroduction(line) {
+    if (line.startsWith("Uvod:")) {
+      mealPlan.uvod = line.replace("Uvod:", "").trim();
+    }
+  }
+
+  function startNewDay(dayNumber) {
+    return {
+      dan: `Dan ${dayNumber}`,
+      obroci: {
+        dorucak: { opis: "", sastojci: [], instrukcije: "", kalorije: 0 },
+        uzina1: { opis: "", sastojci: [], instrukcije: "", kalorije: 0 },
+        rucak: { opis: "", sastojci: [], instrukcije: "", kalorije: 0 },
+        uzina2: { opis: "", sastojci: [], instrukcije: "", kalorije: 0 },
+        vecera: { opis: "", sastojci: [], instrukcije: "", kalorije: 0 },
+      }
+    };
+  }
+
+  function parseMealDetail(line, meal) {
+    if (line.startsWith("Opis:")) {
+      meal.opis = line.replace("Opis:", "").trim();
+    } else if (line.startsWith("Sastojci:")) {
+      meal.sastojci = line.replace("Sastojci:", "").split(",").map(item => item.trim());
+    } else if (line.startsWith("Instrukcije:")) {
+      meal.instrukcije = line.replace("Instrukcije:", "").trim();
+    } else if (line.startsWith("Kalorije:")) {
+      meal.kalorije = parseInt(line.replace("Kalorije:", "").trim()) || 0;
+    }
+  }
+
+  function parseConclusion(line) {
+    if (line.startsWith("Zaključak:")) {
+      mealPlan.zakljucak = line.replace("Zaključak:", "").trim();
+    }
+  }
+
+  // Parsing the content line by line
+  let currentDay = null;
+  let currentMeal = null;
+
+  const lines = content.split("\n").map(line => line.trim());
+  lines.forEach(line => {
+    parseTitle(line);
+    parseIntroduction(line);
+
+    if (line.startsWith("Dan")) {
+      const dayNumber = mealPlan.dani.length + 1;
+      currentDay = startNewDay(dayNumber);
+      mealPlan.dani.push(currentDay);
+      currentMeal = null;
+    } else if (line.includes("Doručak:")) {
+      currentMeal = currentDay.obroci.dorucak;
+    } else if (line.includes("Užina 1:")) {
+      currentMeal = currentDay.obroci.uzina1;
+    } else if (line.includes("Ručak:")) {
+      currentMeal = currentDay.obroci.rucak;
+    } else if (line.includes("Užina 2:")) {
+      currentMeal = currentDay.obroci.uzina2;
+    } else if (line.includes("Večera:")) {
+      currentMeal = currentDay.obroci.vecera;
+    } else if (currentMeal) {
+      parseMealDetail(line, currentMeal);
+    }
+    
+    parseConclusion(line);
+  });
+
+  res.status(200).json({ planIshrane: mealPlan });
+});
+
+
+//
+app.use("/multiple", async (req, res) => {
+  try {
+
+
+
+
+    res.json({
+      uvod: uvod,
+      zakljucak: zakljucak,
+      dani: content,
+      holPris: holPristup,
+      voda: prepVoda,
+      spavanje: spavanjeSavet,
+      podrska: podrzkaImun,
+      plan: planFizAkt
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'An error occurred while processing the prompts' });
+  }
+});
+
+
+//Holisticki pristup
+const holPristupShema = z.object({
+  fizickoZdravlje: z.string().min(1, "Fizičko zdravlje mora biti opisano"),
+  zdraveNavike: z.string().min(1, "Zdrave navike moraju biti opisane"),
+  preventivnaNega: z.string().min(1, "Preventivna nega mora biti opisana"),
+  odrzavanjeBilansa: z.string().min(1, "Održavanje bilansa mora biti opisano"),
+});
+
+
+// Ruta za holistički pristup
+app.get('/hol', async (req, res) => {
+  try {
+    
+    const holPristupResult = await openai.chat.completions.create({
+      model: 'gpt-4o-2024-08-06',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an AI that provides detailed and clearly structured explanations on holistic approaches to health and wellness.',
+        },
+        {
+          role: 'user',
+          content: `Molim te da pružiš jasan i organizovan opis holističkog pristupa zdravlju, podeljen u posebne odeljke:
+                    1. Fizičko zdravlje: Kratak opis
+                    2. Zdrave navike: Kratak opis
+                    3. Preventivna nega: Kratak opis
+                    4. Održavanje bilansa: Kratak opis
+            Neka odgovori budu jasno strukturirani sa tačno definisanim odeljcima: 
+            '1. Fizičko zdravlje:', 
+            '2. Zdrave navike:', 
+            '3. Preventivna nega:', 
+            '4. Održavanje bilansa:' sa dvotačkom na kraju svakog naslova.`,
+        },
+      ],
+    });
+
+    // Generisani odgovor
+    let odgovor = holPristupResult.choices[0].message.content;
+    odgovor = odgovor.replace(/[#!&*ü!_?-@**]/g, "");
+
+    console.log('odgovor:', odgovor);
+
+    // Provera da li su svi odeljci prisutni u odgovoru
+    if (
+      !odgovor.includes('1. Fizičko zdravlje:') ||
+      !odgovor.includes('2. Zdrave navike:') ||
+      !odgovor.includes('3. Preventivna nega:') ||
+      !odgovor.includes('4. Održavanje bilansa:')
+    ) {
+      return res.status(400).json({ error: "Odgovor nije u ispravnom formatu." });
+    }
+
+    //Defoltno ako nema defoltne vrenosti
+    const defaultHol = {
+      fizickoZdravlje: "Fizičko zdravlje se odnosi na dobrobit i funkcionalnost našeg tela. To uključuje stanje naših unutrašnjih organa, mišića, kostiju, kao i našu telesnu kondiciju i snagu. Holistički pristup fizičkom zdravlju prepoznaje da su svi ovi aspekti međusobno povezani i da su svi od suštinskog značaja za sveukupno zdravlje. To znači da se fokusiramo ne samo na lečenje simptoma, već i na razumijevanje i tretiranje uzroka.",
+      zdraveNavike: "Zdrave navike su ponašanja koja često praktikujemo i koja pozitivno utiču na naše fizičko, emocionalno i mentalno zdravlje. To može uključivati redovnu fizičku aktivnost, uravnoteženu ishranu, dovoljno sna, hidrataciju, kao i izbegavanje štetnih navika poput pušenja ili prekomernog konzumiranja alkohola. Holistički pristup zdravim navikama prepoznaje da su sve ove aktivnosti povezane i da promena jedne navike može imati širok spektar uticaja na naše zdravlje.",
+      preventivnaNega: "Preventivna nega je pristup zdravlju koji se fokusira na sprečavanje bolesti i stanja pre nego što se pojave, umesto da se bave samo njihovim lečenjem. To može uključivati redovne lekarske preglede, vakcinaciju, skrining za određene bolesti, kao i vođenje zdravog životnog stila. Holistički pristup prepoznaje važnost preventivne nege u održavanju dugoročnog zdravlja i dobrobiti.",
+      odrzavanjeBilansa: "Održavanje bilansa odnosi se na pronalaženje ravnoteže između različitih aspekata našeg života, uključujući fizičko zdravlje, emocionalno blagostanje, socijalne odnose, duhovnost i rad. Holistički pristup održavanju bilansa prepoznaje da su svi ovi aspekti međusobno povezani i da promene u jednom aspektu mogu uticati na druge. To znači da se teži za ravnotežom u svim oblastima života, a ne samo u jednoj."
+    }
+
+    // Podela odgovora u odgovarajuću strukturu
+    const hol = {
+      fizickoZdravlje: odgovor.split('1. Fizičko zdravlje:')[1].split('2. Zdrave navike:')[0].trim() || defaultHol.fizickoZdravlje,
+      zdraveNavike: odgovor.split('2. Zdrave navike:')[1].split('3. Preventivna nega:')[0].trim() || defaultHol.zdraveNavike,
+      preventivnaNega: odgovor.split('3. Preventivna nega:')[1].split('4. Održavanje bilansa:')[0].trim() || defaultHol.preventivnaNega,
+      odrzavanjeBilansa: odgovor.split('4. Održavanje bilansa:')[1].trim() || defaultHol.odrzavanjeBilansa,
+    };
+
+    // Validacija odgovora prema Zod shemi
+    holPristupShema.parse(hol);
+
+    console.log('odgovor: ', odgovor);
+
+    // Slanje odgovora korisniku
+    res.json({ hol });
+
+  } catch (error) {
+    // Ako se desi greška (npr. u validaciji ili pri pozivu OpenAI)
+    res.status(500).json({ error: error.message || "Došlo je do greške prilikom generisanja odgovora." });
+  }
+});
+
+  //DODAJ JOS AKO TREBA
+  // 5. Emocionalno zdravlje: Kratak opis 
+  // 6. Mentalno zdravlje: Kratak opis 
+  // 7. Socijalno zdravlje: Kratak opis 
+  // 8. Duhovno zdravlje: Kratak opis  
+
+//Ostali generisani hupiti
+const planShema = z.object({
+  // voda: z.string().min(1, "Plan za unos vode mora biti prisutan"),
+  // spavanje: z.string().min(1, "Plan za spavanje mora biti prisutan"),
+  // podrska: z.string().min(1, "Podrška imunološkom sistemu mora biti prisutna"),
+  // plan: z.string().min(1, "Plan fizičke aktivnosti mora biti prisutan"),
+  // uvod: z.string().min(1, "Uvod mora biti prisutan"),
+  zakljucak: z.string().min(1, "Zaključak mora biti prisutan"),
+});
+
+//Defoltne vrednosti za kratke upite
+const kratki = {
+  voda: "Unos vode je ključan za pravilan rad i funkciju našeg tela. Stručnjaci preporučuju dnevni unos od oko 2 litre vode, iako to može varirati ovisno o individualnim potrebama, naporima i klimatskim uvjetima. Hidracija pomaže u reguliranju tjelesne temperature, podmazivanju zglobova, prenošenju hranjivih tvari do stanica i ispiranju otpadnih materija iz tijela. Nedostatak vode može dovesti do dehidracije, što može uzrokovati umor, glavobolju i brojne druge zdravstvene probleme. Stoga je važno obratiti pažnju na unos vode i paziti na znakove dehidracije. Voda se ne treba konzumirati samo kada smo žedni, već kontinuirano tijekom cijeloga dana.",
+  spavanje: "Poboljšanje spavanja može dramatično utjecati na vaše opće blagostanje i kvalitetu života. Postojanje kvalitetnih rutina prije spavanja i stvaranje okoline pogodne za spavanje mogu pomoći u postizanju dubokog i korisnog sna. Ovo uključuje redukciju svjetlosti i buke, kao i osiguranje da je vaš krevet udoban i podržavajući. Također, važno je paziti na prehranu i unos kofeina, često vježbati te pokušati ići u krevet i buditi se u isto vrijeme svaki dan kako bi se regulirao cirkadijanski ritam. Dobar san može poboljšati koncentraciju, produktivnost i također igrati ključnu ulogu u regulaciji tjelesne težine i smanjenju rizika od bolesti.",
+  podrska: "Imunološka podrška vrlo je važna za jačanje tjelesne obrane od raznih bolesti i infekcija. Održavanje snažnog imunološkog sustava zahtijeva ravnotežu pravilne prehrane, redovitog vježbanja, adekvatnog sna i manje stresa. Dodaci prehrani s vitaminima i mineralima poput vitamina C, D, E, cinka, selenija i drugih snažni su imunomodulatori. Također, probiotici mogu pružiti važnu podršku za imunološki sustav jer većina našeg imuniteta zapravo dolazi iz crijeva. Važno je posjetiti liječnika ili stručnjaka za prehranu prije početka bilo kakve prehrambene terapije.",
+  plan: "Plan fizičke aktivnosti od vitalne je važnosti za održavanje dobrog zdravlja i forme. U idealnom slučaju, taj plan bi trebao uključivati različite aktivnosti koje se miješaju tijekom tjedna. Kardio trening, poput trčanja, vožnje biciklom ili brzog hodanja, obično se smatra osnovom bilo kojeg plana fizičke aktivnosti. Osim toga, trening snage, kao što je dizanje utega, može pomoći u izgradnji i održavanju mišićne mase. Fleksibilnost i balansirane vježbe, poput joge, mogu poboljšati koordinaciju i smanjiti rizik od ozljeda. Cilj je biti aktivan barem 30 minuta dnevno, većinom dana u tjednu.",
+  uvod: "Nutritivni plan je prilagođeni program ishrane koji se sastavlja kako bi podržao specifične ciljeve pojedinca u pogledu zdravlja, fizičke aktivnosti i životnih navika. On uzima u obzir potrebe organizma za osnovnim nutrijentima – poput ugljenih hidrata, proteina, masti, vitamina i minerala – kako bi se postigao optimalan balans i poboljšalo opšte stanje zdravlja. Nutritivni plan može biti osmišljen za različite ciljne grupe, poput osoba koje žele da izgube težinu, povećaju mišićnu masu, poboljšaju energiju ili unaprede zdravlje srca. On se bazira na naučno potkrepljenim principima ishrane, s ciljem da pruži odgovarajuće količine hrane za postizanje održivih i dugoročnih zdravstvenih koristi.",
+  zakljucak: "Nutritivni plan je ključan alat za postizanje i održavanje optimalnog zdravlja. Pravilno balansiran plan ishrane pomaže u poboljšanju fizičkog zdravlja, povećanju energije i smanjenju rizika od različitih bolesti. Prilagođen svakom pojedincu, nutricionistički plan može biti od pomoći u postizanju ciljeva poput mršavljenja, poboljšanja kondicije ili očuvanja opšteg blagostanja. Uz pravilnu edukaciju i primenu, nutricionistički plan postaje temelj zdravog načina života koji doprinosi dugoročnom fizičkom i mentalnom zdravlju.",
+}
+
+//================
+// Definisanje Zod šeme za motivacioni uvod
+const uvodSchema = z.object({
+  prviPasus: z.string().min(1, "Prvi pasus je obavezan"),
+  drugiPasus: z.string().min(1, "Drugi pasus je obavezan"),
+});
+
+// Za sad je ovde hadkodovano
+const korisnik = {
+  ime: "Marko Marković",
+  datumRodjenja: "1985-06-15",
+  visina: 180,
+  tezina: 85,
+  primcilj: "povećanje mišićne mase",
+  speccilj: "dobiti 5 kg mišićne mase u narednih 3 meseca",
+  motivacija: "želja da poboljša svoju fizičku spremnost i zdravlje",
+};
+
+//Samo uvod
+app.get('/ostali', async (req, res) => {
+  const uvodPrompt = `
+    Napiši motivacioni uvod za ${korisnik.ime}, rođenog ${korisnik.datumRodjenja}, koji ima ${new Date().getFullYear() - new Date(korisnik.datumRodjenja).getFullYear()} godina, visinu ${korisnik.visina} cm i trenutnu težinu ${korisnik.tezina} kg. Njegov/a primarni cilj ishrane je ${korisnik.primcilj}, sa specifičnim ciljem da ${korisnik.speccilj}. Korisnik je motivisan da promeni svoje navike zato što ${korisnik.motivacija}.
+    Prvi pasus treba da bude bogat, detaljan, sa puno informacija i inspiracije. Započni ga sa motivacijom korisnika, navodeći specifične aspekte njegovog napretka. Koristi puno detalja i proširi odgovor, koristeći primere i detalje o njegovim naporima da poveća mišićnu masu. Neka odgovor bude što duži, sa puno entuzijazma, podrške i divljenja.
+    Drugi pasus neka naglasi važnost dugoročnog održavanja zdravih navika i koristi koje će korisnik imati, poput poboljšanja zdravstvenog stanja, povećane energije i boljeg kvaliteta života. Uvod treba da bude pisan u drugom licu jednine, obraćajući se direktno korisniku, i treba da ima podržavajući i inspirativan ton.
+  `;
+
+  try {
+    const uvodResult = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: uvodPrompt }],
+      max_tokens: 1500,
+      temperature: 0.9,   // Maštovitiji odgovor
+      top_p: 1,           // Veci broj reci
+    });
+
+    // Prečišćavanje rezultata
+    let uvod = uvodResult.choices[0]?.message?.content?.trim() || "Početak nije bio uspešan.";
+    uvod = uvod.replace(/[#!&*ü!_?-@**]/g, "");  // Prečišćavanje neželjenih karaktera
+
+    // Podela generisanog uvoda na pasuse
+    const [prviPasus, drugiPasus] = uvod.split("\n").filter(line => line.trim() !== "");
+
+    // Validacija pomoću Zod-a
+    const parsedUvod = uvodSchema.safeParse({
+      prviPasus: prviPasus,
+      drugiPasus: drugiPasus,
+    });
+
+    if (parsedUvod.success) {
+      // Ako je validacija uspešna, šaljemo odgovor
+      res.json({
+        prviPasus: parsedUvod.data.prviPasus,
+        drugiPasus: parsedUvod.data.drugiPasus,
+      });
+    } else {
+      // Ako postoji greška u validaciji
+      res.status(400).json({
+        error: "Greška u generisanju uvoda",
+        details: parsedUvod.error.errors,
+      });
+    }
+  } catch (error) {
+    // Ako dođe do greške tokom API poziva
+    res.status(500).json({
+      error: "Došlo je do greške pri generisanju motivacionog uvoda.",
+      details: error.message,
+    });
+  }
+});
+//================
+
+//Simple PDF
+ app.use("/test", async (req, res) => {
+  try {
+    const pdfDoc = new PDFDocument();
+
+    // Registrujte fontove
+    pdfDoc.registerFont("OpenSans_Condensed-Regular", "./fonts/OpenSans_Condensed-Regular.ttf");
+    pdfDoc.registerFont("OpenSans_Condensed-Bold", "./fonts/OpenSans_Condensed-Bold.ttf");
+    pdfDoc.font("OpenSans_Condensed-Regular"); // Postavite default font na regular
+
+    // Novi objekat mydata
+    const mydata = {
+      odgovor: {
+        voda: "Unos vode ključan je za pravilno funkcioniranje tijela i održavanje zdravlja. Tijelo ljudi se sastoji od oko 60% vode i svakodnevno gubi dio te tekućine kroz znoj, urin i disanje. Preporučeni dnevni unos vode varira, ali opća preporuka je oko 2 litre dnevno, odnosno osam čaša. Unos vode posebno treba povećati tijekom vježbanja ili kod visokih temperatura kada je gubitak vode kroz znojenje veći. Redoviti unos vode pomaže u probavi, regulaciji tjelesne temperature, podmazivanju zglobova i održavanju zdrave kože. Poremećaji u unosu vode, poput dehidracije, mogu prouzročiti ozbiljne zdravstvene probleme.",
+        spavanje: "Poboljšanje kvalitete spavanja može značajno utjecati na naše ukupno zdravlje i dobrobit. Nedostatak kvalitetnog sna može dovesti do problema kao što su povećani rizik od kroničnih bolesti, pad koncentracije, umora i raspoloženja. Nekoliko je načina na koje možete poboljšati svoj san. Redovita tjelesna aktivnost može pomoći u regulaciji vaših bioritama i promicanju dubljeg i opuštenijeg sna. Također, izbjegavanje alkohola, kofeina i teške hrane nekoliko sati prije spavanja može poboljšati kvalitetu sna. Dodatno, održavanje redovitog rasporeda spavanja, čak i vikendom, može pomoći u regulaciji unutarnjeg biološkog sata. Naposljetku, optimiziranje vašeg okruženja za spavanje, uključujući udoban madrac i jastuk, tamnu, hladnu i tiho sobu mogu doslovno napraviti svijet razlike.",
+        podrska: "Imunološka podrška odnosi se na poticanje i jačanje našeg imunološkog sustava koji je zadužen za obranu tijela od različitih bolesti. To se može postići uravnoteženom prehranom bogatom vitaminima i mineralima, redovitom tjelesnom aktivnošću, dovoljnom količinom sna i izbjegavanjem stresnih situacija. Također, postoji niz suplemenata i biljnih pripravaka koji se koriste za dodatno jačanje imunološkog sustava. Pravilna imunološka podrška ključna je za očuvanje i unapređenje općeg zdravstvenog stanja.",
+        plan: "Fizička aktivnost ima brojne koristi za tijelo i um, doprinoseći boljem zdravlju i svakodnevnom raspoloženju. Plan fizičke aktivnosti stoga bi trebao biti dio naše svakodnevnice. Kroz plan, cilj je postići pravilnu ravnotežu između aerobnih, anaerobnih i fleksibilnosti vježbi. \n\nPonedjeljkom se možete odlučiti za trčanje ili bicikliranje kako biste povećali svoju izdržljivost kroz kardio vježbe. Utorkom biste mogli koristiti utege za jačanje glavnih mišićnih skupina. U srijedu može biti dan za odmor. U četvrtak se može izvesti raznovrsna serija pliometrijskih vježbi za razvoj snage i agilnosti, a petak odabrati za pilates ili jogu za razvoj fleksibilnosti i koncentracije. Vikend može biti posvećen aktivnostima na otvorenom poput planinarenja ili plivanja.\n\nIstaknite da je ovo samo primjer, zajedno s pravilnom prehranom i dovoljno sna, vaš plan fizičke aktivnosti treba biti prilagođen vašim potrebama, mogućnostima i ciljevima kako biste ostali motivirani i vidjeli kontinuirani napredak.",
+        uvod: "Nutritivni plan je prilagođeni program ishrane koji se sastavlja kako bi podržao specifične ciljeve pojedinca u pogledu zdravlja, fizičke aktivnosti i životnih navika. On uzima u obzir potrebe organizma za osnovnim nutrijentima – poput ugljenih hidrata, proteina, masti, vitamina i minerala – kako bi se postigao optimalan balans i poboljšalo opšte stanje zdravlja. Nutritivni plan može biti osmišljen za različite ciljne grupe, poput osoba koje žele da izgube težinu, povećaju mišićnu masu, poboljšaju energiju ili unaprede zdravlje srca. On se bazira na naučno potkrepljenim principima ishrane, s ciljem da pruži odgovarajuće količine hrane za postizanje održivih i dugoročnih zdravstvenih koristi.",
+        zakljucak: " Nutritivni plan je ključan alat za postizanje i održavanje optimalnog zdravlja. Pravilno balansiran plan ishrane pomaže u poboljšanju fizičkog zdravlja, povećanju energije i smanjenju rizika od različitih bolesti. Prilagođen svakom pojedincu, nutricionistički plan može biti od pomoći u postizanju ciljeva poput mršavljenja, poboljšanja kondicije ili očuvanja opšteg blagostanja. Uz pravilnu edukaciju i primenu, nutricionistički plan postaje temelj zdravog načina života koji doprinosi dugoročnom fizičkom i mentalnom zdravlju."
+      },
+      hol: {
+        fizickoZdravlje: "Fizičko zdravlje je osnovni aspekt holističkog pristupa i odnosi se na stanje tela i njegovu sposobnost da funkcioniše optimalno. Uključuje pravilnu ishranu, redovnu fizičku aktivnost, dovoljno sna i održavanje zdrave telesne težine. Fizičko zdravlje podrazumeva i redovne lekarske preglede kako bi se pratile vitalne funkcije i rano otkrili potencijalni zdravstveni problemi.",
+        zdraveNavike: "Zdrave navike igraju ključnu ulogu u održavanju opšteg blagostanja. One obuhvataju usvajanje dnevnih rutina koje podržavaju zdravlje, kao što su uravnotežena ishrana bogata voćem i povrćem, adekvatna hidratacija, redovno vežbanje, tehnike opuštanja poput meditacije ili joge, i izbegavanje štetnih supstanci poput alkohola i duvana. Razvijanje ovih navika doprinosi dugoročnoj vitalnosti i smanjenju rizika od hroničnih bolesti.",
+        preventivnaNega: "Preventivna nega je ključni aspekt holističkog pristupa i uključuje sve mere koje se preduzimaju kako bi se sprečio razvoj bolesti ili otkrili zdravstveni problemi u ranoj fazi. To podrazumeva vakcinacije, redovne zdravstvene preglede, skrining testove, kao i edukaciju o zdravim životnim stilovima. Cilj preventivne nege je da se smanji potreba za lečenjem i poboljša kvalitet života.",
+        odrzavanjeBilansa: "Održavanje bilansa u holističkom pristupu znači postizanje i održavanje harmonije između različitih aspekata života — fizičkog, mentalnog, emocionalnog i duhovnog. To podrazumeva upravljanje stresom, balansiranje između posla i privatnog života, negovanje odnosa sa drugima i rad na ličnom razvoju. Kada su svi ovi aspekti u ravnoteži, osoba je sposobnija da se nosi sa izazovima i živi ispunjenim životom."
+      },
+      message: {
+        days: [
+          {
+            dan: "Dan 1",
+            rucak: { opis: "Grilovana piletina sa povrćem", sastojci: "Pileći file...", instrukcije: "Zagrejte gril tiganj...", kalorije: 450 },
+            uzina2: { opis: "Jogurt sa orasima", sastojci: "Grčki jogurt...", instrukcije: "Pomešajte grčki jogurt...", kalorije: 250 },
+            vecera: { opis: "Losos na žaru sa spanaćem", sastojci: "Filet lososa...", instrukcije: "Zagrejte tiganj...", kalorije: 500 }
+          },
+          {
+            dan: "Dan 2",
+            rucak: { opis: "Quinoa salata sa avokadom", sastojci: "Quinoa...", instrukcije: "Skuvajte quinou...", kalorije: 550 },
+            uzina2: { opis: "Smoothie od banana", sastojci: "Banana...", instrukcije: "Sve sastojke stavite u blender...", kalorije: 300 },
+            vecera: { opis: "Ćuretina u sosu", sastojci: "Mlevena ćuretina...", instrukcije: "Na tiganju sa malo ulja...", kalorije: 480 }
+          }
+        ]
+      }
+    };
+
+    // Dodaj uvodni tekst
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Nutricionistički izveštaj", { align: "center" });
+    pdfDoc.moveDown(2);
+    pdfDoc.fontSize(12).font("OpenSans_Condensed-Regular").text(mydata.odgovor.uvod);
+    pdfDoc.addPage();
+
+    // Dodaj obroke po danima, svaki na zasebnoj stranici u obliku tabele
+    mydata.message.days.forEach(day => {
+      pdfDoc.fontSize(14).font("OpenSans_Condensed-Bold").text(day.dan);
+      pdfDoc.moveDown(1);
+
+      // Pozicije i širine kolona tabele
+      const startX = 50;
+      const startY = pdfDoc.y;
+      const columnWidths = [80, 150, 150, 100, 60];
+      const rowHeight = 60;
+
+      // Dodaj zaglavlja kolona
+      const headers = ["Obrok", "Opis", "Sastojci", "Instrukcije", "Kalorije"];
+      headers.forEach((header, index) => {
+        pdfDoc.rect(startX + columnWidths.slice(0, index).reduce((a, b) => a + b, 0), startY, columnWidths[index], rowHeight / 2)
+          .stroke();
+        pdfDoc.font("OpenSans_Condensed-Bold").fontSize(10).text(header, startX + columnWidths.slice(0, index).reduce((a, b) => a + b, 0) + 5, startY + 5, { width: columnWidths[index] - 10, align: 'center' });
+      });
+
+      // Crtanje linije ispod zaglavlja
+      pdfDoc.moveTo(startX, startY + rowHeight / 2).lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), startY + rowHeight / 2).stroke();
+
+      // Dodaj redove za svaki obrok
+      let currentY = startY + rowHeight / 2;
+      ["rucak", "uzina2", "vecera"].forEach(mealType => {
+        const meal = day[mealType];
+        if (meal) {
+          // Dodaj ćelije u redovima
+          pdfDoc.rect(startX, currentY, columnWidths[0], rowHeight).stroke();
+          pdfDoc.font("OpenSans_Condensed-Regular").text(mealType.charAt(0).toUpperCase() + mealType.slice(1), startX + 5, currentY + 5);
+
+          pdfDoc.rect(startX + columnWidths[0], currentY, columnWidths[1], rowHeight).stroke();
+          pdfDoc.text(meal.opis, startX + columnWidths[0] + 5, currentY + 5, { width: columnWidths[1] - 10 });
+
+          pdfDoc.rect(startX + columnWidths[0] + columnWidths[1], currentY, columnWidths[2], rowHeight).stroke();
+          pdfDoc.text(meal.sastojci, startX + columnWidths[0] + columnWidths[1] + 5, currentY + 5, { width: columnWidths[2] - 10 });
+
+          pdfDoc.rect(startX + columnWidths[0] + columnWidths[1] + columnWidths[2], currentY, columnWidths[3], rowHeight).stroke();
+          pdfDoc.text(meal.instrukcije, startX + columnWidths[0] + columnWidths[1] + columnWidths[2] + 5, currentY + 5, { width: columnWidths[3] - 10 });
+
+          pdfDoc.rect(startX + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3], currentY, columnWidths[4], rowHeight).stroke();
+          pdfDoc.text(meal.kalorije.toString(), startX + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3] + 5, currentY + 5, { width: columnWidths[4] - 10, align: 'center' });
+
+          currentY += rowHeight;
+        }
+      });
+
+      pdfDoc.addPage();
+    });
+
+    // Dodaj sekciju "Fizičko zdravlje" i druge iz holističkog pristupa
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Fizičko zdravlje");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(mydata.hol.fizickoZdravlje);
+    pdfDoc.addPage();
+
+    Object.entries(mydata.hol).forEach(([title, content]) => {
+      if (title !== "fizickoZdravlje") {
+        pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text(title.charAt(0).toUpperCase() + title.slice(1).replace(/([A-Z])/g, ' $1'));
+        pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(content);
+        pdfDoc.addPage();
+      }
+    });
+
+    // Dodaj zaključak
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Zaključak");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(mydata.odgovor.zakljucak);
+
+    // Kreirajte PDF i sačuvajte ga
+    const fileName = `Nutricionisticki_Izvestaj_${Date.now()}_${Math.floor(Math.random() * 100000000000)}.pdf`;
+    const filePath = path.join(__dirname, 'files', fileName);
+    const chunks = [];
+    
+    pdfDoc.on('data', chunk => chunks.push(chunk));
+    pdfDoc.on('end', async () => {
+      await fs.promises.writeFile(filePath, Buffer.concat(chunks));
+
+      // Snimanje u bazu podataka
+      try {
+        await PdfSchema.create({ title: "Nutricionistički Izveštaj", pdf: fileName, path: filePath });
+        console.log("PDF report saved successfully.");
+        res.download(filePath);
+      } catch (err) {
+        console.error("Error saving PDF to database:", err);
+        res.status(500).send("Error saving PDF report.");
+      }
+    });
+
+    pdfDoc.end();
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    res.status(500).send("An error occurred while generating the PDF.");
+  }
+});
+
+//Formatiranje vremena za pdf
+function getCurrentTime() { 
+  let now = new Date();
+
+  now.setUTCHours(now.getUTCHours() + 1);
+
+  let hours = now.getUTCHours();
+  let minutes = now.getUTCMinutes();
+  let seconds = now.getUTCSeconds();
+
+  hours = hours < 10 ? '0' + hours : hours;
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+  seconds = seconds < 10 ? '0' + seconds : seconds;
+
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+//Formatiranje datuma za pdf 
+function formatDate(date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+
+  return `${day}-${month}-${year}`;
+}
+
+//Proveravamo da li primarni cilj ima razmak
+function replaceSpacesWithUnderscore(inputString) {
+  if (inputString.includes(' ')) {
+    return inputString.replace(/\s+/g, '_');
+  }
+  return inputString;
+}
+
+
+//Test - sa fetchevima
+app.use("/test1", async (req, res) => {
+  let { brojDana, obroci, data_ } = req.body;
+
+  let brojDanaInt = Number(brojDana)
+    const pdfDoc = new PDFDocument();
+
+    // Registrujte fontove
+    pdfDoc.registerFont("OpenSans_Condensed-Regular", "./fonts/OpenSans_Condensed-Regular.ttf");
+    pdfDoc.registerFont("OpenSans_Condensed-Bold", "./fonts/OpenSans_Condensed-Bold.ttf");
+    pdfDoc.font("OpenSans_Condensed-Regular"); // Postavite default font na regular
+
+    // Novi objekat mydata
+    try {
+        // prompt - uvod
+        const uvodResult = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [{ role: "user", content: `Kreiraj mi kratki uvodni text o ishrani sa primarnim ciljem: ${data_.primcilj}` }],
+          max_tokens: 1000,
+        });
+        let uvod = uvodResult.choices[0]?.message?.content?.trim() || kratki.uvod;
+        uvod = uvod.replace(/[#!&*ü!_?-@**]/g, "");
+  
+      // prompt - zakljucak
+      const zakljucakResult = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: `Kreiraj mi kratki zaključak text o ishrani sa primarnim ciljem: ${data_.primcilj}` }],
+        max_tokens: 1000,
+      });
+      let zakljucak = zakljucakResult.choices[0]?.message?.content?.trim() || kratki.zakljucak;
+      zakljucak = zakljucak.replace(/[#!&*ü!_?-@**]/g, "");
+  
+      // prompt - plan fizicke aktivnosti
+      const planFizAktResult = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: "Kreiraj mi kratki text o planu fizičke aktivnosti" }],
+        max_tokens: 1000,
+      });
+      let planFizAkt = planFizAktResult.choices[0]?.message?.content?.trim() || kratki.plan;
+      planFizAkt = planFizAkt.replace(/[#!&*ü!_?-@**]/g, "");
+      // console.log('planFizAkt:', planFizAkt);
+  
+      // prompt - imunološka podrška
+      const podrzkaImunResult = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: "Kreiraj mi kratki tekst o imunološku podršku" }],
+        max_tokens: 1000,
+      });
+      let podrzkaImun = podrzkaImunResult.choices[0]?.message?.content?.trim() || kratki.podrska;
+      podrzkaImun = podrzkaImun.replace(/[#!&*ü!_?-@**]/g, "");
+      // console.log('podrzkaImun:', podrzkaImun);
+  
+      // prompt - savet za spavanje
+      const spavanjeSavetResult = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: "Kreiraj mi kratki text o poboljšanje spavanja" }],
+        max_tokens: 1000,
+      });
+      let spavanjeSavet = spavanjeSavetResult.choices[0]?.message?.content?.trim() || kratki.spavanje;
+      spavanjeSavet = spavanjeSavet.replace(/[#!&*ü!_?-@**]/g, "");
+      // console.log('spavanjeSavet:', spavanjeSavet);
+  
+      // prompt - preporuka za unos vode
+      const prepVodaResult = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: "Kreiraj mi kratki text o unos vode" }],
+        max_tokens: 1000,
+      });
+      let prepVoda = prepVodaResult.choices[0]?.message?.content?.trim() || kratki.voda;
+      prepVoda = prepVoda.replace(/[#!&*ü!_?-@**]/g, "");
+      // console.log('prepVoda:', prepVoda);
+  
+      // Kreiranje odgovora
+      const odgovor = {
+        voda: prepVoda,
+        spavanje: spavanjeSavet,
+        podrska: podrzkaImun,
+        plan: planFizAkt,
+        uvod: uvod,
+        zakljucak: zakljucak
+      };
+  
+      //Za ostale upite
+      planShema.parse(odgovor);
+  
+      //Za dane
+      if (!brojDanaInt || typeof brojDanaInt !== "number") {
+        return res.status(400).json({ message: "Molimo unesite validan broj dana." });
+      }
+  
+      const validObroci = ["doručak", "užina1", "ručak", "užina2", "večera"];
+      const chosenObroci = Array.isArray(obroci) && obroci.every(obrok => validObroci.includes(obrok))
+        ? obroci
+        : ["doručak", "užina1", "ručak", "užina2", "večera"];
+        
+          ["doručak", "užina", "ručak", "užina", "večera"]
+  
+      const obrociPrompt = chosenObroci.map(obrok => {
+        switch (obrok) {
+          case "doručak":
+            return "doručak";
+          case "užina1":
+            return "užina";
+          case "ručak":
+            return "ručak";
+          case "užina2":
+            return "druga užina";
+          case "večera":
+            return "večera";
+          default:
+            return obrok;
+        }
+      }).join(", ");
+  
+      const DaySchema = generateDaySchema(chosenObroci);
+      const FullWeekSchema = z.object({
+        days: z.array(DaySchema),
+      });
+      //- Obrok treba da sadrži realne i dostupne namirnice iz srbije.
+      console.log('Ukupna kalorijska vrednost: ', data_.ukupnaKalVred)
+      console.log('Tdee: ', data_.tdee)
+
+      const completion = await client.beta.chat.completions.parse({
+        model: 'gpt-4o-2024-08-06',
+        // messages: [
+        //   {
+        //     role: "system",
+        //     content: "Ti si korisni nutricionista. Generiši plan ishrane u JSON formatu koristeći samo zadatu šemu. Nazivi dana treba da budu 'Dan 1', 'Dan 2', i tako dalje, a ne imena dana u nedelji.",
+        //   },
+        //   {
+        //     role: "user",
+        //     content: `Napravi plan ishrane za ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}. Primarni cilj je ${data_.primcilj}, moja ukupna kalorijska vrednost unosa hrane treba da iznosi tačno ${data_.ukupnaKalVred} kcal za taj dan, naminice koje preferiram u ishrani: ${data_.voljeneNamirnice}, naminice koje ne preferiram u ishrani: ${data_.neVoljeneNamirnice}. Nemoj uključivati obroke koji nisu navedeni.`,
+        //   },
+        // ],
+        messages: [
+          {
+              role: "system",
+              content: `
+              Ti si nutricionista specijalizovan za precizne planove ishrane. Tvoja odgovornost je da generišeš plan ishrane u JSON formatu koristeći samo zadatu šemu.
+              
+              Pravila:
+              - Nemoj da raspodelis kalorijsku vrednost ravnomerno između obroka.
+              - Koristi samo zadate namirnice i izbegavaj isključene namirnice.
+              - Nazivi dana treba da budu 'Dan 1', 'Dan 2', itd., bez imena dana u nedelji.
+              - Za svaki obrok navedi tačnu kalorijsku vrednost.
+              `,
+          },
+          {
+              role: "user",
+              content: `
+              Napravi plan ishrane za ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}.
+              
+              Primarni cilj: ${data_.primcilj}.
+              Ukupna kalorijska vrednost: ${data_.ukupnaKalVred} kcal po danu.
+              Preferirane namirnice: ${data_.voljeneNamirnice}.
+              Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+              
+              Svi obroci moraju imati precizne kalorijske vrednosti koje doprinose ukupnom dnevnom unosu kalorija. Ne uključuj obroke koji nisu navedeni.
+              `,
+          },
+      ],
+        response_format: zodResponseFormat(FullWeekSchema, 'mealPlan'),
+      });
+  
+      let message = completion.choices[0]?.message.parsed;  //OVDE MOZDA PUKNE! ZBOG KARAKTERA
+      // message = message.replace(/[#!&*ü!_?-@**]/g, "");  //OVDE
+  
+      // FullWeekSchema.parse(hol);
+  
+      //Za holisticki pristup
+      const holPristupResult = await openai.chat.completions.create({
+        model: 'gpt-4o-2024-08-06',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an AI that provides detailed and clearly structured explanations on holistic approaches to health and wellness.',
+          },
+          {
+            role: 'user',
+            content: `Molim te da pružiš jasan i organizovan opis holističkog pristupa zdravlju, podeljen u posebne odeljke:
+                      1. Fizičko zdravlje: Kratak opis
+                      2. Zdrave navike: Kratak opis
+                      3. Preventivna nega: Kratak opis
+                      4. Održavanje bilansa: Kratak opis
+              Neka odgovori budu jasno strukturirani sa tačno definisanim odeljcima: 
+              '1. Fizičko zdravlje:', 
+              '2. Zdrave navike:', 
+              '3. Preventivna nega:', 
+              '4. Održavanje bilansa:' sa dvotačkom na kraju svakog naslova.`,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 700,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+      });
+  
+      // Generisani odgovor
+      let odgovor1 = holPristupResult.choices[0].message.content;
+      odgovor1 = odgovor1.replace(/[#!&*ü!_?-@**]/g, "");
+  
+      // Provera da li su svi odeljci prisutni u odgovoru
+      if (
+        !odgovor1.includes('1. Fizičko zdravlje:') ||
+        !odgovor1.includes('2. Zdrave navike:') ||
+        !odgovor1.includes('3. Preventivna nega:') ||
+        !odgovor1.includes('4. Održavanje bilansa:')
+      ) {
+        return res.status(400).json({ error: "Odgovor nije u ispravnom formatu." });
+      }
+  
+      //Defoltno ako nema defoltne vrenosti
+      const defaultHol = {
+        fizickoZdravlje: "Fizičko zdravlje se odnosi na dobrobit i funkcionalnost našeg tela. To uključuje stanje naših unutrašnjih organa, mišića, kostiju, kao i našu telesnu kondiciju i snagu. Holistički pristup fizičkom zdravlju prepoznaje da su svi ovi aspekti međusobno povezani i da su svi od suštinskog značaja za sveukupno zdravlje. To znači da se fokusiramo ne samo na lečenje simptoma, već i na razumijevanje i tretiranje uzroka.",
+        zdraveNavike: "Zdrave navike su ponašanja koja često praktikujemo i koja pozitivno utiču na naše fizičko, emocionalno i mentalno zdravlje. To može uključivati redovnu fizičku aktivnost, uravnoteženu ishranu, dovoljno sna, hidrataciju, kao i izbegavanje štetnih navika poput pušenja ili prekomernog konzumiranja alkohola. Holistički pristup zdravim navikama prepoznaje da su sve ove aktivnosti povezane i da promena jedne navike može imati širok spektar uticaja na naše zdravlje.",
+        preventivnaNega: "Preventivna nega je pristup zdravlju koji se fokusira na sprečavanje bolesti i stanja pre nego što se pojave, umesto da se bave samo njihovim lečenjem. To može uključivati redovne lekarske preglede, vakcinaciju, skrining za određene bolesti, kao i vođenje zdravog životnog stila. Holistički pristup prepoznaje važnost preventivne nege u održavanju dugoročnog zdravlja i dobrobiti.",
+        odrzavanjeBilansa: "Održavanje bilansa odnosi se na pronalaženje ravnoteže između različitih aspekata našeg života, uključujući fizičko zdravlje, emocionalno blagostanje, socijalne odnose, duhovnost i rad. Holistički pristup održavanju bilansa prepoznaje da su svi ovi aspekti međusobno povezani i da promene u jednom aspektu mogu uticati na druge. To znači da se teži za ravnotežom u svim oblastima života, a ne samo u jednoj."
+      }
+  
+      // Podela odgovora u odgovarajuću strukturu
+      const hol = {
+        fizickoZdravlje: odgovor1.split('1. Fizičko zdravlje:')[1].split('2. Zdrave navike:')[0].trim() || defaultHol.fizickoZdravlje,
+        zdraveNavike: odgovor1.split('2. Zdrave navike:')[1].split('3. Preventivna nega:')[0].trim() || defaultHol.zdraveNavike,
+        preventivnaNega: odgovor1.split('3. Preventivna nega:')[1].split('4. Održavanje bilansa:')[0].trim() || defaultHol.preventivnaNega,
+        odrzavanjeBilansa: odgovor1.split('4. Održavanje bilansa:')[1].trim() || defaultHol.odrzavanjeBilansa,
+      };
+  
+      // Validacija odgovora prema Zod shemi
+      holPristupShema.parse(hol);
+  
+      let mydata = {
+        odgovor,
+        hol,
+        message
+      }
+    // let data_ = { id, tezina, visina, pol, primcilj, specilj, godine, dijagnoza, ucestBr, navikeUish, namirnice, voljeneNamirnice, neVoljeneNamirnice, ukupnaKalVred, selectedValueBrDana, tdee, bmi, kuk,vrat,struk,motiv,nivoAkt,vrstaFiz,alerg,pus,alk,datumRodjenja }
+    // Dodaj metadata
+    pdfDoc.fontSize(12).font("OpenSans_Condensed-Regular")
+    .text(`${data_?.ime || ""} ${data_?.prezime || ""}`, { x: 10, y: 30 })
+    .text(`TDEE:${data_?.tdee || ""} kcal/dan`, { x: 10, y: 50 })
+    .text(`BMI:${data_?.bmi || ""} kg/m2`, { x: 10, y: 70 })
+    .text(`Ukupna kalorijska vrednost:${data_?.ukupnaKalVred || ""} kcal/dan`, { x: 10, y: 90 });
+    // .text(`BMR:${data_?.bmrValue || ""} kcal/dan`, { x: 10, y: 90 });
+    
+  
+    // Dodaj sliku na desnoj strani
+    pdfDoc.image('./public/logoo.png', 500, 50, { width: 50, height: 50 }); // Slika pozicionirana na desnoj strani (x: 500 je približno desna ivica)
+    pdfDoc.moveDown(1);
+
+    // Dodaj hadkodovani naslov
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Nutricionistički izveštaj", { align: "center" });
+    pdfDoc.moveDown(1);
+    // Dodaj uvodni tekst
+    pdfDoc.fontSize(12).font("OpenSans_Condensed-Regular").text(mydata.odgovor.uvod);
+    pdfDoc.addPage();
+
+    // Dodaj obroke po danima, svaki na zasebnoj stranici u obliku tabele
+    mydata.message.days.forEach(day => {
+      pdfDoc.fontSize(14).font("OpenSans_Condensed-Bold").text(day.dan);
+      pdfDoc.moveDown(1);
+
+      // Pozicije i širine kolona tabele
+      const startX = 50;
+      const startY = pdfDoc.y;
+      const columnWidths = [80, 150, 150, 100, 60];
+      const rowHeight = 60;
+
+      // Dodaj zaglavlja kolona
+      const headers = ["Obrok", "Opis", "Sastojci", "Instrukcije", "Kalorije"];
+      headers.forEach((header, index) => {
+        pdfDoc.rect(startX + columnWidths.slice(0, index).reduce((a, b) => a + b, 0), startY, columnWidths[index], rowHeight / 2)
+          .stroke();
+        pdfDoc.font("OpenSans_Condensed-Bold").fontSize(10).text(header, startX + columnWidths.slice(0, index).reduce((a, b) => a + b, 0) + 5, startY + 5, { width: columnWidths[index] - 10, align: 'center' });
+      });
+
+      // Crtanje linije ispod zaglavlja
+      pdfDoc.moveTo(startX, startY + rowHeight / 2).lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), startY + rowHeight / 2).stroke();
+
+
+      // Dodaj redove za svaki obrok
+      let currentY = startY + rowHeight / 2;
+      Object.keys(day).forEach(mealType => {
+        if (mealType !== "dan") {
+          const meal = day[mealType];
+          pdfDoc.rect(startX, currentY, columnWidths[0], rowHeight).stroke();
+          pdfDoc.font("OpenSans_Condensed-Regular").text(mealType.charAt(0).toUpperCase() + mealType.slice(1), startX + 5, currentY + 5);
+
+          pdfDoc.rect(startX + columnWidths[0], currentY, columnWidths[1], rowHeight).stroke();
+          pdfDoc.text(meal.opis, startX + columnWidths[0] + 5, currentY + 5, { width: columnWidths[1] - 10 });
+
+          pdfDoc.rect(startX + columnWidths[0] + columnWidths[1], currentY, columnWidths[2], rowHeight).stroke();
+          pdfDoc.text(meal.sastojci, startX + columnWidths[0] + columnWidths[1] + 5, currentY + 5, { width: columnWidths[2] - 10 });
+
+          pdfDoc.rect(startX + columnWidths[0] + columnWidths[1] + columnWidths[2], currentY, columnWidths[3], rowHeight).stroke();
+          pdfDoc.text(meal.instrukcije, startX + columnWidths[0] + columnWidths[1] + columnWidths[2] + 5, currentY + 5, { width: columnWidths[3] - 10 });
+
+          pdfDoc.rect(startX + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3], currentY, columnWidths[4], rowHeight).stroke();
+          pdfDoc.text(meal.kalorije.toString(), startX + columnWidths[0] + columnWidths[1] + columnWidths[2] + columnWidths[3] + 5, currentY + 5, { width: columnWidths[4] - 10, align: 'center' });
+
+          currentY += rowHeight;
+        }
+      });
+
+
+      pdfDoc.addPage();
+    });
+
+    // Dodaj sekciju "Fizičko zdravlje" i druge iz holističkog pristupa
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Fizičko zdravlje");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(mydata.hol.fizickoZdravlje);
+    pdfDoc.addPage();
+
+    Object.entries(mydata.hol).forEach(([title, content]) => {
+      if (title !== "fizickoZdravlje") {
+        pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text(title.charAt(0).toUpperCase() + title.slice(1).replace(/([A-Z])/g, ' $1'));
+        pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(content);
+        pdfDoc.addPage();
+      }
+    });
+
+    // Dodaj zaključak
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Zaključak");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(mydata.odgovor.zakljucak);
+
+    // Kreirajte PDF i sačuvajte ga
+    const fileName = `Nutricionisticki_Izvestaj_${Date.now()}_${Math.floor(Math.random() * 100000000000)}.pdf`; //
+    const filePath = path.join(__dirname, 'files', fileName);
+    const chunks = [];
+    
+    pdfDoc.on('data', chunk => chunks.push(chunk));
+    pdfDoc.on('end', async () => {
+      await fs.promises.writeFile(filePath, Buffer.concat(chunks));
+
+      // Snimanje u bazu podataka
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString('sr-Latn', { day: '2-digit', month: '2-digit', year: 'numeric' }); //Za danasnji dan
+
+      const today1 = new Date();
+      today1.setDate(today1.getDate() + 1); // Dodajemo jedan dan
+      const formattedDatePlus1 = today1.toLocaleDateString('sr-Latn', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      const todayKraj = new Date();
+      todayKraj.setDate(todayKraj.getDate() + data_.selectedValueBrDana + 1); // Dodajemo izabrani broj dana
+      const formattedDateKraj = todayKraj.toLocaleDateString('sr-Latn', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      let klijentData = {
+        tez: data_.tezina,
+        visina: data_.visina || "",
+        primCilj: data_.primcilj || "",
+        specCilj: data_.specilj || "",
+        motiv: data_.motiv || "",
+        nivoAkt: data_.nivoAkt || "",
+        datumRodj: data_.datumRodjenja || "",
+        tdee: data_.tdee || "",
+        vrstaFiz: data_.vrstaFiz || "",
+        struk: data_.struk || "",
+        kuk: data_.kuk || "",
+        krv: data_.krv || "",
+        dijag: data_.dijagnoza || "",
+        alerg: data_.alerg || "",
+        ish: data_.selectedIshranaNaziv || "",
+        obr: data_.ucestBr || "",
+        pus: data_.pus || "",
+        alk: data_.alk || "",
+        ukupnaKalVred: data_.ukupnaKalVred || "",
+        bmi: data_.bmi || "",
+        bmrValue: data_.bmrValue || ""
+      }
+
+      try {
+        const vreme = getCurrentTime();
+        await PdfSchema.create({ title: data_.primcilj, pdf: fileName, idKlijenta: data_.id, datumKreir: formattedDate, datumPoc: formattedDatePlus1, datumKraj: formattedDateKraj, status: "Aktivan", tip: data_.selectedValueBrDana,vreme,klijentData });
+        console.log("PDF report saved successfully.");
+
+        let foundUser = await User.findOne({ mail: data_.email }).exec();
+
+        if (!foundUser) {
+          return res.status(401).json({ message: "Korisnik nije nadjen" });
+        }
+
+        // const secret = process.env.JWT_SECRET + foundUser.password;
+        // const token = jwt.sign(
+        //   { id: foundUser._id, email: foundUser.mail },
+        //   secret,
+        //   {
+        //     expiresIn: "5m",
+        //   }
+        // );
+
+        //Send email
+        let link = `https://13.50.180.98:3000/dash/user/${foundUser._id}`; //Zameni localhost sa lajvom
+
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          host: "smtp.gmail.email",
+          port: 587,
+          secure: false,
+          auth: {
+            user: "office@nutritrans.com",
+            pass: "jezq ddqo aynu qucx",
+          },
+        });
+    
+        var mailOptions = {
+          from: "office@nutritrans.com",
+          to: data_.email,
+          subject: "Generisanje Izveštaja",
+          // text: link,
+          html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+                      <h1 style="color: #333;">Uspešno kreirana ishrana!</h1>
+                      <p style="color: #555;">Vaš izveštaj je u obliku PDF-a, kliknite dole da bi ste ga pogledali</p>
+                      <a href="${link}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Idi na aplikaciju</a>
+                      <p style="color: #555; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj mail, Hvala.</p>
+                  </div>`,
+        };
+    
+        transporter.sendMail(mailOptions, function (error, info) {
+          if (error) {
+            // console.log(error);
+            res.status(400).json({ message: `Nije uspelo slanje na mail` });
+          } else {
+            res.status(200).json({ message: `Obavestenje za kreiran pdf poslato na ${email}` });
+            // console.log("Email sent: " + info.response);
+          }
+        });
+
+        res.json({ 
+          status: "ok", 
+          message: "PDF je uspešno generisan i sačuvan.", 
+        });
+
+      } catch (err) {
+        console.error("Error saving PDF to database:", err);
+        res.status(500).send("Error saving PDF report.");
+      }
+    });
+
+    pdfDoc.end();
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    res.status(500).send("An error occurred while generating the PDF.");
+  }
+});
+
+const nivoiFizickihAktivnosti = {
+  sedentarni: {
+      naziv: "Sedentaran",
+      faktorAktivnosti: 1.2
+  },
+  laganaAktivnost: {
+      naziv: "Lagano aktivan",
+      faktorAktivnosti: 1.375
+  },
+  umerenaAktivnost: {
+      naziv: "Umereno aktivan",
+      faktorAktivnosti: 1.55
+  },
+  intenzivnaAktivnost: {
+      naziv: "Veoma aktivan",
+      faktorAktivnosti: 1.725
+  },
+  vrloIntenzivnaAktivnost: {
+      naziv: "Ekstremno aktivan",
+      faktorAktivnosti: 1.9
+  }
+};
+
+function getNivoFizickeAktivnosti(faktorAktivnosti) {
+  for (let nivo in nivoiFizickihAktivnosti) {
+      if (nivoiFizickihAktivnosti[nivo].faktorAktivnosti === faktorAktivnosti) {
+          return nivoiFizickihAktivnosti[nivo].naziv;
+      }
+  }
+  return "Nepoznat nivo aktivnosti";  // Ako faktor aktivnosti nije pronađen
+}
+
+//Ovaj koristim!
+app.use("/test2", async (req, res) => {
+  let { brojDana, obroci, data_ } = req.body;
+
+  const prompt = await Prompt.findOne({ prompt: "1" });
+  // console.log('Prompt: ', prompt);  //Taj njegov jedan prompt iz baze
+  
+  // Check if the prompt is null or undefined
+  if (!prompt) {
+    return res.status(400).json({ message: "Nisu nadjeni prompti" });
+  }
+
+  //PRONADJI NJEGOV PAKET I VIDI STA I KOLIKO MU JE OSTALO PA PO TOME NAPRAVI DA SE ODREDNJENI PROMPTOVI SALJU!!!
+  // let status_paketa = {
+  //   naziv: "Standard",  // ili "Standard"
+  //   broj: 5
+  // };
+
+  // function ispisiTest(status) {
+  //     if (status.broj > 0) {
+  //         if (status.naziv === "Premium") {
+  //             console.log("TEST");
+  //             status.broj--;
+  //         } else if (status.naziv === "Standard") {
+  //             if (status.broj === 5) {
+  //                 console.log("TEST");
+  //             } else {
+  //                 console.log("TEST AGAIN");
+  //             }
+  //             status.broj--;
+  //         }
+  //     } else {
+  //         console.log("Broj je 0, ne može se dalje ispisivati.");
+  //     }
+  // }
+
+  // // Testiranje funkcije
+  // ispisiTest(status_paketa); // Prvi put
+  // ispisiTest(status_paketa); // Drugi put
+  // ispisiTest(status_paketa); // Treći put
+  // ispisiTest(status_paketa); // Četvrti put
+  // ispisiTest(status_paketa); // Peti put
+  // ispisiTest(status_paketa); // Ne može dalje, broj je 0
+
+
+  // res.json(prompt);
+
+  //Ako conditional sentance renedring  
+  function generisiPlanMetaData(data_) {
+    let tekst = "Ti si veštačka inteligencija koja nudi personalizovan plan fizičke aktivnosti. Pružaj detaljna objašnjenja za ";
+
+    if (data_.name && data_.lastname) {
+        tekst += `${data_.name} ${data_.name} `;
+    }
+
+    if (data_.godine) {
+      tekst += `sa godinama: ${data_.godine}`;
+    }
+
+    if (data_.visina) {
+      tekst += `, visina:  ${data_.visina}`;
+    }
+
+    if (data_.tezina) {
+      tekst += `, sa težinom:  ${data_.tezina}`;
+    }
+
+    if (data_.pol) {
+      tekst += `, pol: ${data_.pol}`;
+    }
+
+    if (data_.primcilj) {
+      tekst += `koji ima primaran cilj ${data_.primcilj}`;
+    }
+
+    if (data_.specilj) {
+      tekst += `a specifične ciljeve ${data_.primcilj}`;
+    }
+
+    if (data_.tezina) {
+        tekst += `koji ima ${data_.tezina} kg `;
+    }
+
+    if (data_.visina) {
+        tekst += `i visok je ${data_.visina} cm, `;
+    }
+
+    if (data_.struk) {
+        tekst += `obim struka mu je ${data_.struk} cm, `;
+    }
+
+    if (data_.nivoAkt) {
+        tekst += `sa nivoom fizičke aktivnosti ${getNivoFizickeAktivnosti(data_.nivoAkt)}.`;
+    }
+
+    if (data_.motiv) {
+        tekst += `Motivacija za potrebu fizičkih aktivnosti uključuje ${data_.motiv}, `;
+    }
+
+    if (data_.dijagnoza) {
+        tekst += `a ima dijagnozu ${data_.dijagnoza}.`;
+    }
+
+    return tekst;
+  }
+
+  // let data_ = { id, tezina, visina, pol, primcilj, specilj, godine, dijagnoza, ucestBr, navikeUish, namirnice, voljeneNamirnice, neVoljeneNamirnice, ukupnaKalVred, selectedValueBrDana, tdee, bmi, kuk,vrat,struk,motiv,nivoAkt,vrstaFiz,alerg,pus,alk,datumRodjenja }
+
+  let brojDanaInt = Number(brojDana)
+    const pdfDoc = new PDFDocument();
+  // const pdfDoc = new PDFDocument({
+  //   size: 'A4',
+  //   margin: 0 // Bez margina kako bi slika popunila celu stranicu
+  // });
+
+    // Registrujte fontove
+    pdfDoc.registerFont("OpenSans_Condensed-Regular", "./fonts/OpenSans_Condensed-Regular.ttf");
+    pdfDoc.registerFont("OpenSans_Condensed-Bold", "./fonts/OpenSans_Condensed-Bold.ttf");
+    pdfDoc.registerFont("OpenSans_Condensed-BoldItalic", "./fonts/OpenSans_Condensed-BoldItalic.ttf");
+    pdfDoc.font("OpenSans_Condensed-Regular"); // Postavite default font na regular
+
+    //Kreiranje prve dve stranice?
+
+
+    // Novi objekat mydata
+    try {
+        // prompt - uvod - STARI
+        // const uvodResult = await openai.chat.completions.create({
+        //   model: "gpt-4",
+        //   messages: [{ role: "user", content: `Kreiraj mi kratki uvodni text o ishrani sa primarnim ciljem: ${data_.primcilj}` }],
+        //   max_tokens: 1000,
+        // });
+        // let uvod = uvodResult.choices[0]?.message?.content?.trim() || kratki.uvod;
+        // uvod = uvod.replace(/[#!&*ü!_?-@**]/g, "");
+
+      
+
+      // let uvodPrompt = `
+      //   Napiši motivacioni uvod za ${data_?.ime}, rođenog ${data_?.datumRodjenja}, ${data_?.pol} godina, koji ima ${data_?.godine} godina, visinu ${data_?.visina} cm i trenutnu težinu ${data_?.tezina} kg. Njegov/a primarni cilj ishrane je ${data_?.primcilj}, 
+      // `;
+      
+      // if (data_?.specilj) {
+      //   uvodPrompt += `sa specifičnim ciljem da ${data_?.specilj}. `;
+      // }
+      
+      // if (data_?.motiv) {
+      //   uvodPrompt += `Korisnik je motivisan da promeni svoje navike zato što ${data_?.motiv}. `;
+      // }
+      
+      // uvodPrompt += `
+        // Prvi pasus treba da bude bogat, detaljan, sa puno informacija i inspiracije. Započni ga sa motivacijom korisnika, navodeći specifične aspekte njegovog napretka. Koristi puno detalja i proširi odgovor, koristeći primere i detalje o njegovim naporima da poveća mišićnu masu. Neka odgovor bude što duži, sa puno entuzijazma, podrške i divljenja.
+        // Drugi pasus neka naglasi važnost dugoročnog održavanja zdravih navika i koristi koje će korisnik imati, poput poboljšanja zdravstvenog stanja, povećane energije i boljeg kvaliteta života. Uvod treba da bude pisan u drugom licu jednine, obraćajući se direktno korisniku, i treba da ima podržavajući i inspirativan ton.
+      // `;
+
+      const uvodResult = await openai.chat.completions.create({
+        model: 'gpt-4o-2024-08-06',
+        messages: [
+          {
+              role: "system",
+              content: `Ti si veštačka inteligencija koja nudi uvod o planu ishrane. Pružaj detaljna objašnjenja za ${data_.ime} ${data_.prezime}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}. Njegov/a primarni cilj ishrane je ${data_?.primcilj}`
+          },
+          {
+              role: "user",
+              // content: prompt.uvod.text,
+              content: `${prompt.uvod.text} Neka broj karaktera bude tačno: ${prompt.uvod.brKar}`,
+          }
+      ],
+        // max_tokens:  Math.floor(Number(prompt.uvod.brKar) / 4),
+      });
+
+      console.log('Uvod tokens => ', Math.floor(Number(prompt.uvod.brKar) / 4))
+  
+      // Prečišćavanje rezultata
+      let uvod = uvodResult.choices[0]?.message?.content?.trim();
+      uvod = uvod.replace(/[#!&*ü!_?@**]/g, "");
+  
+      // Podela generisanog uvoda na pasuse
+      // const [prviPasus, drugiPasus] = uvod.split("\n").filter(line => line.trim() !== "");
+  
+      // Validacija pomoću Zod-a
+      // const parsedUvod = uvodSchema.safeParse({
+      //   prviPasus: prviPasus,
+      //   drugiPasus: drugiPasus,
+      // });
+      
+      // prompt - zakljucak
+      const zakljucakResult = await openai.chat.completions.create({  
+        model: "gpt-4o-2024-08-06",
+        messages: [
+          {
+              role: "system",
+              content: `Ti si veštačka inteligencija koja nudi zakljucak o planu ishrane. Pružaj detaljna objašnjenja za ${data_.ime} ${data_.prezime}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}.`
+          },
+          {
+              role: "user",
+              // content: prompt.zakljucak.text,
+              content: `${prompt.zakljucak.text} Neka broj karaktera bude tačno: ${prompt.zakljucak.brKar}`,
+          }
+      ],
+        // max_tokens:  Math.floor(Number(prompt.zakljucak.brKar) / 4),
+      });
+
+      console.log('Zakljucak tokens => ', Math.floor(Number(prompt.zakljucak.brKar) / 4))
+
+      let zakljucak = zakljucakResult.choices[0]?.message?.content?.trim() || kratki.zakljucak;
+      zakljucak = zakljucak.replace(/[#!&*ü!_?@**]/g, "");
+
+            // prompt - smernice za ishranu
+            const smerniceResult = await openai.chat.completions.create({  
+              model: "gpt-4o-2024-08-06",
+              messages: [
+                {
+                    role: "system",
+                    content: `Ti si veštačka inteligencija koja nudi smernice za ishranu. Pružaj detaljna objašnjenja za ${data_.ime} ${data_.prezime}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}.`
+                },
+                {
+                    role: "user",
+                    // content: prompt.smernice.text,
+                    content: `${prompt.smernice.text} Neka broj karaktera bude tačno: ${prompt.smernice.brKar}`,
+                }
+            ],
+              // max_tokens:  Math.floor(Number(prompt.smernice.brKar) / 4),
+            });
+
+            console.log('Smernice tokens => ', Math.floor(Number(prompt.smernice.brKar) / 4))
+
+            let smernice = smerniceResult.choices[0]?.message?.content?.trim();
+            smernice = smernice.replace(/[#!&*ü!_?@**]/g, "");
+  
+            // console.log('Smernice => ', smernice); //Lepo ispisuje
+
+      // prompt - plan fizicke aktivnosti
+      const planFizAktResult = await openai.chat.completions.create({ 
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "system", 
+                content: generisiPlanMetaData(data_)
+                // content: `Ti si veštačka inteligencija koja nudi personalizovan plan fizičke aktivnosti. Pružaj detaljna objašnjenja za ${data_.ime} ${data_.prezime} koji ima ${data_.tezina} kg i visok je ${data_.visina} cm, obim struka mu je ${data_.struk} cm, sa odabranim fizičkim aktivnostima ${data_.vrstaFiz}. Motivacija za potrebu fizičkih aktivnosti uključuje ${data_.motiv}, a ima dijagnozu ${data_.dijagnoza}.`
+            },
+            {
+                role: "user",
+                // content: prompt.fizAkt.text,
+                content: `${prompt.fizAkt.text} Neka broj karaktera bude tačno: ${prompt.fizAkt.brKar}`,
+            }
+        ],
+        // max_tokens:  Math.floor(Number(prompt.fizAkt.brKar) / 4),
+    });
+
+    console.log('fizAkt tokens => ', Math.floor(Number(prompt.fizAkt.brKar) / 4))
+
+      let planFizAkt = planFizAktResult.choices[0]?.message?.content?.trim();
+      planFizAkt = planFizAkt.replace(/[#!&*ü!_?@**]/g, "");
+      // console.log('planFizAkt:', planFizAkt);
+  
+      // let vrstaImuniteta = data_.imunitet == "Da" ? "jak imunitet" : "slab imunitet";
+      function generisiPreporuke(data_) {
+
+        let vrstaImuniteta = data_.imunitet === "Da" ? "jak imunitet" : "slab imunitet";
+    
+        let tekst = "Ti si veštačka inteligencija koja nudi preporuke za brigu o imunitetu. Pružaj detaljno objašnjenje o tome kako ";
+    
+        // Provera i dodavanje imena i prezimena
+        if (data_.name && data_.lastnamename) {
+            tekst += `${data_.name} ${data_.lastname} `;
+        }
+
+        if (data_.godine) {
+          tekst += `sa godinama: ${data_.godine}`;
+        }
+    
+        if (data_.visina) {
+          tekst += `, visina:  ${data_.visina}`;
+        }
+    
+        if (data_.tezina) {
+          tekst += `, sa težinom:  ${data_.tezina}`;
+        }
+    
+        if (data_.pol) {
+          tekst += `, pol: ${data_.pol}`;
+        }
+    
+        if (vrstaImuniteta) {
+            tekst += `može poboljšati svoj imunitet, imajući u vidu da ima ${vrstaImuniteta} `;
+        }
+    
+        if (data_.motiv) {
+            tekst += `i motivaciju za promenu: ${data_.motiv}. `;
+        }
+    
+        if (data_.specilj) {
+            tekst += `Njegovi specificni ciljevi su ${data_.specilj}.`;
+        }
+
+        if (data_.navikeUish) {
+          tekst += `Njegove navike u ishrani su ${data_.navikeUish}.`;
+        }
+
+        if (data_.alerg) {
+          tekst += `Njegove alergije su ${data_.alerg}.`;
+        }
+    
+        return tekst;
+    }
+
+      // prompt - imunološka podrška
+      const podrzkaImunResult = await openai.chat.completions.create({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "system",
+                content: generisiPreporuke(data_),
+                // content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o imunitetu. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime} može poboljšati svoj imunitet, imajući u vidu da ima ${vrstaImuniteta} i motivaciju za promenu: ${data_.motiv}. Njegovi specificni ciljevi su ${data_.specilj}`
+            },
+            {
+                role: "user", 
+                // content: prompt.imun.text
+                content: `${prompt.imun.text} Neka broj karaktera bude tačno: ${prompt.imun.brKar}`,
+            }
+        ],
+        // max_tokens: Math.floor(Number(prompt.imun.brKar)/ 4)
+    });
+
+    console.log('imun tokens => ', Math.floor(Number(prompt.imun.brKar) / 4))
+
+      let podrzkaImun = podrzkaImunResult.choices[0]?.message?.content?.trim();
+      podrzkaImun = podrzkaImun.replace(/[#!&*ü!_?@**]/g, "");
+      // console.log('podrzkaImun:', podrzkaImun);
+
+                  // prompt - perosnalizovan plan ishrane - text pre dana
+                  const personalIshraneResult = await openai.chat.completions.create({
+                    model: "gpt-4o-2024-08-06",
+                    messages: [
+                        {
+                            role: "system", 
+                            //Upotpuni ovo podacima
+                            content: `Ti si veštačka inteligencija koja nudi uvod o personlanizovanom planu ishrane, pružaj detaljno objašnjenje za ${data_.name} ${data_.lastname} sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol},`
+                        },
+                        {
+                            role: "user", 
+                            // content:  prompt.planIsh.text,
+                            content: `${prompt.planIsh.text} Neka broj karaktera bude tačno: ${prompt.planIsh.brKar}`,
+                        }
+                    ],
+                    // max_tokens: Math.floor(Number(prompt.planIsh.brKar) / 4)
+                  });
+                  let personalIshrane = personalIshraneResult.choices[0]?.message?.content?.trim();
+                  personalIshrane = personalIshrane.replace(/[#!&*ü!_?@**]/g, "");
+
+                  console.log('planIsh tokens => ', Math.floor(Number(prompt.planIsh.brKar) / 4))
+  
+        function generisiPreporukeZaSan(data_) {
+          let tekst = "Ti si veštačka inteligencija koja nudi preporuke za brigu o snu. Pružaj detaljno objašnjenje o tome kako ";
+      
+          if (data_.name && data_.lastname) {
+              tekst += `${data_.name} ${data_.lastname} `;
+          }
+
+          if (data_.godine) {
+            tekst += `sa godinama: ${data_.godine}`;
+          }
+      
+          if (data_.visina) {
+            tekst += `, visina:  ${data_.visina}`;
+          }
+      
+          if (data_.tezina) {
+            tekst += `, sa težinom:  ${data_.tezina}`;
+          }
+      
+          if (data_.pol) {
+            tekst += `, pol: ${data_.pol}`;
+          }
+      
+          if (data_.nivoAkt) {
+              tekst += `može poboljšati svoj san, imajući u vidu da ima nivo fizičke aktivnosti ${getNivoFizickeAktivnosti(data_.nivoAkt)}. `;
+          }
+ 
+          if (data_.specilj) {
+              tekst += `A ima specifične ciljeve ${data_.specilj} `;
+          }
+
+          if (data_.navikeUish) {
+              tekst += `i navike u ishrani ${data_.navikeUish}.`;
+          }
+      
+          return tekst;
+        }
+                
+      // prompt - savet za spavanje
+      const spavanjeSavetResult = await openai.chat.completions.create({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "system", 
+                content: generisiPreporukeZaSan(data_)
+                // content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o snu. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime} može poboljšati svoj san, imajući u vidu da ima nivo fizičke aktivnosti ${data_.ddd}. A ima specifične ciljeve ${data_.specilj} i navike u ishrani ${data_.navikeUish}.`
+            },
+            {
+                role: "user", 
+                // content: prompt.san.text,
+                content: `${prompt.san.text} Neka broj karaktera bude tačno: ${prompt.san.brKar}`,
+            }
+        ],
+        // max_tokens:  Math.floor(Number(prompt.san.brKar) / 4),
+      });
+
+      console.log('san tokens => ', Math.floor(Number(prompt.san.brKar) / 4))
+
+      let spavanjeSavet = spavanjeSavetResult.choices[0]?.message?.content?.trim();
+      spavanjeSavet = spavanjeSavet.replace(/[#!&*ü!_?@**]/g, "");
+      // console.log('spavanjeSavet:', spavanjeSavet);
+  
+
+      // prompt - preporuka za unos vode
+      const prepVodaResult = await openai.chat.completions.create({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "system", 
+                content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o unosu vode u organizam. Pružaj detaljno objašnjenje o tome kako ${data_.name} ${data_.lastname} ${data_.pol} ${data_.godine} godina, sa težinom ${data_.tezina} i visinom ${data_.visina} cm može poboljšati svoj unos vode, imajući u vidu da ima nivo fizičke aktivnosti ${getNivoFizickeAktivnosti(data_.nivoAkt)}`
+            },
+            {
+                role: "user", 
+                // content: prompt.voda.text,
+                content: `${prompt.voda.text} Neka broj karaktera bude tačno: ${prompt.voda.brKar}`,
+            }
+        ],
+        // max_tokens:  Math.floor(Number(prompt.voda.brKar) / 4),
+      });
+
+      console.log('voda tokens => ', Math.floor(Number(prompt.voda.brKar) / 4))
+
+      let prepVoda = prepVodaResult.choices[0]?.message?.content?.trim();
+      prepVoda = prepVoda.replace(/[#!&*ü!_?@**]/g, "");
+      // console.log('prepVoda:', prepVoda);
+
+      function generisiPreporukeZaDijete(data_) {
+          let tekst = "Ti si veštačka inteligencija koja nudi preporuke o prethodnim iskustvima sa dijetama. Pružaj detaljno objašnjenje o tome kako ";
+
+          if (data_.name && data_.lastname) {
+              tekst += `${data_.name} ${data_.lastname}, `;
+          }
+
+          if (data_.godine) {
+            tekst += `sa godinama: ${data_.godine}`;
+          }
+      
+          if (data_.visina) {
+            tekst += `, visina:  ${data_.visina}`;
+          }
+      
+          if (data_.tezina) {
+            tekst += `, sa težinom:  ${data_.tezina}`;
+          }
+      
+          if (data_.pol) {
+            tekst += `, pol: ${data_.pol}`;
+          }
+
+          if (data_.primcilj) {
+              tekst += `sa ciljevima ${data_.primcilj}, `;
+          }
+
+          if (data_.specilj) {
+              tekst += `i specifičnim ciljem ${data_.specilj} `;
+          }
+      
+          // Provera i dodavanje motivacije
+          if (data_.motiv) {
+              tekst += `i motivacijom za ${data_.motiv} `;
+          }
+      
+          if (data_.iskSaDijetama) {
+              tekst += `sa prethodnim iskustvom ${data_.iskSaDijetama}.`;
+          }
+      
+          return tekst;
+      }
+  
+      // prompt - preporuka za prethodna iskustva sa ishranana
+      const pretIshResult = await openai.chat.completions.create({
+        model: "gpt-4o-2024-08-06",
+        messages: [
+            {
+                role: "system", 
+                content: generisiPreporukeZaDijete(data_)
+                //content: `Ti si veštačka inteligencija koja nudi preporuke o prethodnim iskustvima sa dijetama. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime}, sa ciljevima ${data_.primcilj}, i specifičnim ciljem ${data_.specilj} i motivacijom za ${data_.motiv} sa prethosnim iskustom ${data_.iskSaDijetama}.`
+            },
+            {
+                role: "user", 
+                // content: prompt.predijeta.text,
+                content: `${prompt.predijeta.text} Neka broj karaktera bude tačno: ${prompt.predijeta.brKar}`,
+            }
+        ],
+        // max_tokens:  Math.floor(Number(prompt.predijeta.brKar) / 4),
+      });
+
+      console.log('predijeta tokens => ', Math.floor(Number(prompt.predijeta.brKar) / 4))
+
+      let pretIsh = pretIshResult.choices[0]?.message?.content?.trim();
+      pretIsh = pretIsh.replace(/[#!&*ü!_?@**]/g, "");
+
+
+      // Kreiranje odgovora
+      const odgovor = {
+        // voda: prepVoda,
+        // spavanje: spavanjeSavet,
+        // podrska: podrzkaImun,
+        // plan: planFizAkt,
+        // uvod: uvod,
+        zakljucak: zakljucak
+      };
+  
+      //Za ostale upite
+      planShema.parse(odgovor);
+  
+      //Za dane
+      if (!brojDanaInt || typeof brojDanaInt !== "number") {
+        return res.status(400).json({ message: "Molimo unesite validan broj dana." });
+      }
+  
+      const validObroci = ["doručak", "užina1", "ručak", "užina2", "večera"];
+      const chosenObroci = Array.isArray(obroci) && obroci.every(obrok => validObroci.includes(obrok))
+        ? obroci
+        : ["doručak", "užina1", "ručak", "užina2", "večera"];
+        
+          ["doručak", "užina", "ručak", "užina", "večera"];
+  
+        const obrociPrompt = chosenObroci.map(obrok => {
+          switch (obrok) {
+            case "doručak":
+              return "doručak";
+            case "užina1":
+              return "užina";
+            case "ručak":
+              return "ručak";
+            case "užina2":
+              return "užina2";
+            case "večera":
+              return "večera";
+            default:
+              return obrok;
+          }
+        }).join(", ");
+      
+      console.log('obrociPrompt => ', obrociPrompt);
+
+      const DaySchema = generateDaySchema(chosenObroci);
+      const FullWeekSchema = z.object({
+        days: z.array(DaySchema),
+      });
+      //- Obrok treba da sadrži realne i dostupne namirnice iz srbije.
+      console.log('Ukupna kalorijska vrednost: ', Math.round(data_.ukupnaKalVred))
+      console.log('Tdee: ', Math.round(data_.tdee))
+
+      const completion = await client.beta.chat.completions.parse({
+        model: 'gpt-4o-2024-08-06',
+        // messages: [
+        //   {
+        //     role: "system",
+        //     content: "Ti si korisni nutricionista. Generiši plan ishrane u JSON formatu koristeći samo zadatu šemu. Nazivi dana treba da budu 'Dan 1', 'Dan 2', i tako dalje, a ne imena dana u nedelji.",
+        //   },
+        //   {
+        //     role: "user",
+        //     content: `Napravi plan ishrane za ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}. Primarni cilj je ${data_.primcilj}, moja ukupna kalorijska vrednost unosa hrane treba da iznosi tačno ${data_.ukupnaKalVred} kcal za taj dan, naminice koje preferiram u ishrani: ${data_.voljeneNamirnice}, naminice koje ne preferiram u ishrani: ${data_.neVoljeneNamirnice}. Nemoj uključivati obroke koji nisu navedeni.`,
+        //   },
+        // ], ??? Za tacno 7 (sedam) sa po 3 po obroka dnevno (dorucak,rucak...) ???
+        messages: [
+          {
+              role: "system",
+              content: `
+              Ti si nutricionista specijalizovan za precizne planove ishrane. Tvoja odgovornost je da generišeš plan ishrane u JSON formatu koristeći samo zadatu šemu.
+              
+              Pravila:
+              - Nemoj da raspodelis kalorijsku vrednost ravnomerno između obroka.
+              - Koristi samo zadate namirnice i izbegavaj isključene namirnice.
+              - Nazivi dana treba da budu 'Dan 1', 'Dan 2', itd., bez imena dana u nedelji.
+              - Za svaki obrok navedi tačnu kalorijsku vrednost.
+              `,
+          },
+          {
+              role: "user",
+              content: `
+              Napravi plan ishrane za tačno ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}.
+              Primarni cilj: ${data_.primcilj}.
+              Ukupna kalorijska vrednost: ${Math.round(data_.ukupnaKalVred)} kcal po danu.
+              Preferirane namirnice: ${data_.voljeneNamirnice}.
+              Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+              Cene moraju biti okvirne i izražene u RSD.
+              Namirnice trebaju da budu izražene u gramima.
+              Napiši utritivnu vrednost u jednoj rečenici.
+              Svi obroci moraju imati precizne kalorijske vrednosti koje doprinose ukupnom dnevnom unosu kalorija. Ne uključuj obroke koji nisu navedeni.
+              `,
+          },
+      ],
+        response_format: zodResponseFormat(FullWeekSchema, 'mealPlan'),
+      });
+  
+      let message = completion.choices[0]?.message.parsed;  //DANI
+      // let message_cleared = message.replace(/[#!&*ü!_?-@**]/g, "");
+  
+      // FullWeekSchema.parse(hol);
+
+
+            // prompt - preporuka za alkohola
+            const alkoholResult = await openai.chat.completions.create({
+              model: "gpt-4o-2024-08-06",
+              messages: [
+                  {
+                      role: "system", 
+                      content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o unosu alkohola u organizam. Pružaj detaljno objašnjenje o tome kako ${data_.name} ${data_.lastname}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}, koji želi da postigne ${data_.primcilj} i ${data_.specilj} a konzumira ${data_.alk}`
+                  },
+                  {
+                      role: "user", 
+                      // content: prompt.alk.text,
+                      content: `${prompt.alk.text} Neka broj karaktera bude tačno: ${prompt.alk.brKar}`,
+                  }
+              ],
+              // max_tokens: Math.floor(Number(prompt.alk.brKar) / 4),
+            });
+
+            console.log('alk tokens => ', Math.floor(Number(prompt.alk.brKar) / 4))
+
+            let alkohol = alkoholResult.choices[0]?.message?.content?.trim();
+            alkohol = alkohol.replace(/[#!&*ü!_?@**]/g, "");
+
+      //DODAJ CONDITIONAL AKO PUSI DA LI UOPSTE DA POKRECE PROMPT
+
+                        // prompt - preporuka za alkohola
+                        const pusenjeResult = await openai.chat.completions.create({
+                          model: "gpt-4o-2024-08-06",
+                          messages: [
+                              {
+                                  role: "system", 
+                                  content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o pusenju cigareta. Pružaj detaljno objašnjenje o tome kako ${data_.name} ${data_.lastname}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}, koji želi da postigne ${data_.primcilj} i ${data_.specilj} a konzumira ${data_.pus}`
+                              },
+                              {
+                                  role: "user",
+                                  // content: prompt.pus.text,
+                                  content: `${prompt.pus.text} Neka broj karaktera bude tačno: ${prompt.pus.brKar}`,
+                              }
+                          ],
+                          // max_tokens:  Math.floor(Number(prompt.pus.brKar) / 4),
+                        });
+
+                        console.log('pusenje tokens => ', Math.floor(Number(prompt.pus.brKar) / 4))
+
+                        let pusenje = pusenjeResult.choices[0]?.message?.content?.trim();
+                        pusenje = pusenje.replace(/[#!&*ü!_?@**]/g, "");
+
+      // prompt - alergije - renderuje se conditionaly
+      const alergijeResult = await openai.chat.completions.create({
+        model: "gpt-4o-2024-08-06", //gpt-4o-2024-08-06 samo tako stavim za 32k input i output tokena
+        messages: [
+            {
+                role: "system", 
+                content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o alergijama i intolerancijama. Pružaj detaljno objašnjenje za ${data_.name} ${data_.lastname}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}, sa alergijama ${data_.alerg} i intolerancijama za ${data_.intolerancije}`
+            },
+            {
+                role: "user", 
+                // content: prompt.alergiio.text,
+                content: `${prompt.alergiio.text} Neka broj karaktera bude tačno: ${prompt.alergiio.brKar}`,
+            }
+        ],
+        // max_tokens: Math.floor(Number(prompt.alergiio.brKar) / 4),
+      });
+      console.log('alerg tokens => ', Math.floor(Number(prompt.alergiio.brKar) / 4))
+
+      let alergije = alergijeResult.choices[0]?.message?.content?.trim();
+      alergije = alergije.replace(/[#!&*ü!_?@**]/g, "");
+  
+      //Za holisticki pristup  ${data_.nivoFizAktivnosti} => Dodaj iz fronta
+      const holPristupResult = await openai.chat.completions.create({
+        model: 'gpt-4o-2024-08-06', // proverite verziju modela
+        messages: [
+          {
+            role: 'system',
+            content: `Ti si veštačka inteligencija koja nudi personalizovane savete o zdravlju i dobrobiti zasnovane na holističkom pristupu. Pružaj detaljna objašnjenja za ${data_.name} ${data_.lastname}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}, sa primarnim ciljem ${data_.primcilj} i specifičnim ciljem ${data_.specilj}. Motivacija za promenu uključuje ${data_.motiv}, nivo fizičke aktivnosti: 1.2, vrsta fizičke aktivnosti: ${data_.vrstaFiz}, i ishrana: ${data_.selectedIshranaNaziv}.`
+          },
+          {
+            //Promeni 
+            role: 'user',
+            // content: prompt.holisticki.text,
+            content: `${prompt.holisticki.text} Neka broj karaktera bude tačno: ${prompt.holisticki.brKar}`,
+          },
+        ],
+        temperature: 0.7,
+        //Napravi defoltnu vrednost ako je prazno
+        // max_tokens:  Math.floor(Number(prompt.holisticki.brKar) / 4),
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0,
+      });
+
+      console.log('holisticki tokens => ', Math.floor(Number(prompt.alergiio.brKar) / 4))
+  
+    // Generisani odgovor
+    let odgovor1 = holPristupResult.choices[0].message.content;
+    odgovor1 = odgovor1.replace(/[#!&*ü!_?@**]/g, "");
+
+    let mydata = {
+      odgovor,  //Skup podataka
+      odgovor1, //Holisticki pristup  
+      message //Dani
+    }
+
+    //here pdf
+
+    // Dodavanje slike na prvu stranicu
+    pdfDoc.image('./public/firstpage2.png', 0, 0, { width: 597, height: 841.89 }); // A4 dimenzije u pt
+
+    // Dodavanje teksta na prvu stranicu
+    const text = `${data_?.name} ${data_?.lastname}`; // Tekst koji se prikazuje
+    const textFont = "OpenSans_Condensed-Bold"; // Font koji se koristi za tekst
+    const textFontSize = 24; // Veličina fonta
+    const textX = 70; // Početna X koordinata teksta
+    const textY = 615; // Početna Y koordinata teksta
+
+    // Postavi font i veličinu fonta pre računanja širine teksta
+    pdfDoc.font(textFont).fontSize(textFontSize);
+
+    // Izračunavanje širine teksta
+    const textWidth = pdfDoc.widthOfString(text); // Širina teksta
+    const textHeight = textFontSize * 0.7; // Približna visina teksta (proporcija fonta)
+
+    // Dodavanje linije koja pokriva ceo tekst
+    pdfDoc
+        .moveTo(textX, textY - textHeight - 5) // Početak linije
+        .lineTo(textX + textWidth, textY - textHeight - 5) // Kraj linije, širine celog teksta
+        .lineWidth(25) // Debljina linije
+        .strokeColor('#81B873') // Boja linije
+        .stroke(); // Primena linije
+
+    // Dodavanje teksta na prvu stranicu
+    pdfDoc.fillColor('black')           // Boja teksta
+        .text(text, textX, textY, { align: 'left' });
+
+    // Dodavanje druge stranice
+    pdfDoc.addPage();
+
+    // Dodavanje slike na drugu stranicu
+    pdfDoc.image('./public/secondPage.png', 0, 0, { width: 597, height: 841.89 }); // A4 dimenzije u pt
+
+    // Dodavanje trece stranice
+    pdfDoc.addPage();
+
+    // Dodaj metadata
+    pdfDoc.fontSize(12).font("OpenSans_Condensed-Regular")
+    .text(`${data_?.name || ""} ${data_?.lastname || ""}`, { x: 10, y: 30 })
+    .text(`TDEE:${Math.round(data_?.tdee) || ""} kcal/dan`, { x: 10, y: 50 })
+    .text(`BMI:${Math.round(data_?.bmi) || ""} kg/m2`, { x: 10, y: 70 })
+    .text(`Ukupna kalorijska vrednost:${Math.round(data_?.ukupnaKalVred) || ""} kcal/dan`, { x: 10, y: 90 });
+    // .text(`BMR:${data_?.bmrValue || ""} kcal/dan`, { x: 10, y: 90 });
+    
+  
+    // Dodaj sliku na desnoj strani
+    pdfDoc.image('./public/logoo.png', 500, 50, { width: 50, height: 50 }); // Slika pozicionirana na desnoj strani (x: 500 je približno desna ivica)
+    pdfDoc.moveDown(1);
+
+    // Dodaj hadkodovani naslov
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Pokreni svoju transformaciju", { align: "center" });
+    pdfDoc.moveDown(1);
+    
+    // Prvi pasus uvoda - ZA SAD NEMA
+    // pdfDoc.fontSize(12).font("OpenSans_Condensed-Regular").text(parsedUvod.data.prviPasus);
+    // pdfDoc.moveDown(1);
+
+    //Drugi pasus uvoda
+    pdfDoc.fontSize(12).font("OpenSans_Condensed-Regular").text(uvod);
+    pdfDoc.addPage();
+
+    //Holisticki Pristup
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Holistički pristup");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(odgovor1);
+    pdfDoc.addPage();
+
+    //Personalnizovani uvod / Personalizovani Plan Ishrane
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Personalizovani Plan Ishrane");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(personalIshrane);
+    pdfDoc.moveDown(1);
+
+    mydata.message.days.forEach(day => {
+      // Naslov za dan
+      pdfDoc.fontSize(14).font("OpenSans_Condensed-Bold").text(day.dan);
+      pdfDoc.moveDown(1);
+    
+      // Iteracija kroz obroke za taj dan
+      Object.keys(day).forEach(mealType => {
+        if (mealType !== "dan") {
+          const meal = day[mealType];
+    
+          // Ispis naziva obroka
+          pdfDoc.fontSize(12).font("OpenSans_Condensed-Bold").text(`  ${mealType.charAt(0).toUpperCase() + mealType.slice(1)}:`); // Indentacija za obrok
+    
+          // Detalji o obroku
+          pdfDoc.font("OpenSans_Condensed-Regular");
+    
+          // Bold-italic samo za "Opis:"
+          pdfDoc.font("OpenSans_Condensed-BoldItalic")
+            .text(`    Opis:`, { continued: true });
+    
+          // Regularan font za sadržaj
+          pdfDoc.font("OpenSans_Condensed-Regular")
+            .text(`    ${meal.opis}`);
+    
+          pdfDoc.font("OpenSans_Condensed-BoldItalic")
+            .text(`    Sastojci:`, { continued: true });
+          pdfDoc.font("OpenSans_Condensed-Regular")
+            .text(`    ${meal.sastojci}`);
+    
+          pdfDoc.font("OpenSans_Condensed-BoldItalic")
+            .text(`    Instrukcije:`, { continued: true });
+          pdfDoc.font("OpenSans_Condensed-Regular")
+            .text(`    ${meal.instrukcije}`);
+    
+          pdfDoc.font("OpenSans_Condensed-BoldItalic")
+            .text(`    Kalorije:`, { continued: true });
+          pdfDoc.font("OpenSans_Condensed-Regular")
+            .text(`    ${meal.kalorije} kcal`);
+
+          pdfDoc.font("OpenSans_Condensed-BoldItalic")
+            .text(`    Nutritivna vrednost:`, { continued: true });
+          pdfDoc.font("OpenSans_Condensed-Regular")
+            .text(`    ${meal.nutritivna_vrednost}`);
+
+          pdfDoc.font("OpenSans_Condensed-BoldItalic")  
+            .text(`    Cena:`, { continued: true });
+          pdfDoc.font("OpenSans_Condensed-Regular")
+            .text(`    ~${meal.cena} rsd`);
+    
+          pdfDoc.moveDown(1);
+        }
+      });
+    
+      // Dodaj novu stranicu za sledeći dan
+      // pdfDoc.addPage();  //Da bude svaki dan na novoj stranici
+      pdfDoc.moveDown(1);   //Dapomeri dole ispod svakog dana
+    });
+
+    // Naslov za nutritivnu vrednost
+    // pdfDoc.fontSize(14).font("OpenSans_Condensed-Bold").text("Nutritivne informacije");
+    // pdfDoc.moveDown(1);
+
+    pdfDoc.addPage();
+
+    //Preporuka za Smernice
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Smernice");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(smernice);
+    pdfDoc.addPage();
+
+    //Plan fizicke aktivnosti 
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Plan fizičke aktivnosti");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(planFizAkt);
+    pdfDoc.addPage();
+
+    //Preporuka za Imunitet
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Preporuka za Imunitet");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(podrzkaImun);
+    pdfDoc.addPage();
+
+    //Preporuka za San
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Preporuka za san");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(spavanjeSavet);
+    pdfDoc.addPage();
+
+    //Preporuka za unos vode
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Preporuka za unos vode");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(prepVoda);
+    pdfDoc.addPage();
+
+    // Pusenje
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Preporuka za konzumiranje duvana");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(pusenje);
+    pdfDoc.addPage();
+
+    // Alkohol
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Konzumiranje alkohola");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(alkohol);
+    pdfDoc.addPage();
+
+    // Object.entries(mydata.hol).forEach(([title, content]) => {
+    //   if (title !== "fizickoZdravlje") {
+    //     pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text(title.charAt(0).toUpperCase() + title.slice(1).replace(/([A-Z])/g, ' $1'));
+    //     pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(content);
+    //     pdfDoc.addPage();
+    //   }
+    // });
+
+    // Dodaj zaključak
+    pdfDoc.fontSize(18).font("OpenSans_Condensed-Bold").text("Zaključak");
+    pdfDoc.moveDown(1).fontSize(12).font("OpenSans_Condensed-Regular").text(mydata.odgovor.zakljucak);
+
+    // Kreirajte PDF i sačuvajte ga
+    // const fileName = `Nutricionisticki_Izvestaj_${new Date()}_${Math.floor(Math.random() * 100000000000)}.pdf`;
+    //Imaj u vidu da mozda stavis i vreme da bi bilo unikatnije
+    const fileName = `Nutricionisticki_Izvestaj_${formatDate(new Date())}_${replaceSpacesWithUnderscore(data_.primcilj)}.pdf`; //POPRAVI
+    const filePath = path.join(__dirname, 'files', fileName);
+    const chunks = [];
+    
+    pdfDoc.on('data', chunk => chunks.push(chunk));
+    pdfDoc.on('end', async () => {
+      await fs.promises.writeFile(filePath, Buffer.concat(chunks));
+
+      // Snimanje u bazu podataka
+      const today = new Date();
+      const formattedDate = today.toLocaleDateString('sr-Latn', { day: '2-digit', month: '2-digit', year: 'numeric' }); //Za danasnji dan
+
+      const today1 = new Date();
+      today1.setDate(today1.getDate() + 1); // Dodajemo jedan dan
+      const formattedDatePlus1 = today1.toLocaleDateString('sr-Latn', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      const todayKraj = new Date();
+      todayKraj.setDate(todayKraj.getDate() + brojDanaInt + 1); // Dodajemo izabrani broj dana
+      const formattedDateKraj = todayKraj.toLocaleDateString('sr-Latn', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      let klijentData = {
+        tez: data_.tezina,
+        visina: data_.visina || "",
+        primCilj: data_.primcilj || "",
+        specCilj: data_.specilj || "",
+        motiv: data_.motiv || "",
+        nivoAkt: data_.nivoAkt || "",
+        datumRodj: data_.datumRodjenja || "",
+        tdee: Math.round(data_.tdee) || "",
+        vrstaFiz: data_.vrstaFiz || "",
+        struk: data_.struk || "",
+        kuk: data_.kuk || "",
+        krv: data_.krv || "",
+        dijag: data_.dijagnoza || "",
+        alerg: data_.alerg || "",
+        ish: data_.selectedIshranaNaziv || "",
+        obr: data_.ucestBr || "",
+        pus: data_.pus || "",
+        alk: data_.alk || "",
+        ukupnaKalVred: Math.round(data_.ukupnaKalVred) || "",
+        bmi: Math.round(data_.bmi) || "",
+        bmrValue: Math.round(data_.bmrValue) || ""
+      }
+
+      // console.log('klijentData => ', klijentData);
+
+      try {
+        const vreme = getCurrentTime();
+        await PdfSchema.create({ title: data_.primcilj, pdf: fileName, idKlijenta: data_._id, datumKreir: formattedDate, datumPoc: formattedDatePlus1, datumKraj: formattedDateKraj, status: "Aktivan", tip: brojDanaInt ,vreme,klijentData });
+        
+        console.log("PDF report saved successfully.");
+        console.log({ title: data_.primcilj, pdf: fileName, idKlijenta: data_._id, datumKreir: formattedDate, datumPoc: formattedDatePlus1, datumKraj: formattedDateKraj, status: "Aktivan", tip: brojDanaInt ,vreme,klijentData })
+
+      // console.log("Dani =>", message);
+
+         //Cuvanje prompta
+      await ChatKonverzacija.create({ 
+                                      primCilj: data_.primcilj, 
+                                      datum: formattedDate,
+                                      vreme: vreme,
+                                      poslatiPrompt: {
+                                        uvod: prompt.uvod.text,
+                                        holistickiPristup: prompt.holisticki.text,
+                                        planIshrane: prompt.planIsh.text,
+                                        dani: ` Napravi plan ishrane za tačno ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}.
+                                                Primarni cilj: ${data_.primcilj}.
+                                                Ukupna kalorijska vrednost: ${Math.round(data_.ukupnaKalVred)} kcal po danu.
+                                                Preferirane namirnice: ${data_.voljeneNamirnice}.
+                                                Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+                                                Cene moraju biti okvirne i izražene u RSD.
+                                                Namirnice trebaju da budu izražene u gramima.
+                                                Napiši utritivnu vrednost u jednoj rečenici.
+                                                Svi obroci moraju imati precizne kalorijske vrednosti koje doprinose ukupnom dnevnom unosu kalorija. Ne uključuj obroke koji nisu navedeni.`,  
+                                        smernice: prompt.smernice.text,
+                                        planFizickeAktivnosti: prompt.fizAkt.text,
+                                        podrskaZaImunitet: prompt.imun.text,
+                                        spavanjeSavet: prompt.san.text,
+                                        unosVode: prompt.voda.text,
+                                        pusenje: prompt.pus.text,
+                                        alkohol: prompt.alk.text,
+                                        zakljucak: prompt.zakljucak.text,
+                                      },
+                                      odgovor: {
+                                        uvod: uvod,
+                                        holistickiPristup: odgovor1,
+                                        planIshrane: personalIshrane,
+                                        dani: mydata.message.days,
+                                        smernice: smernice,
+                                        planFizickeAktivnosti: planFizAkt,
+                                        podrskaZaImunitet: podrzkaImun,
+                                        spavanjeSavet: spavanjeSavet,
+                                        unosVode: prepVoda,
+                                        pusenje: pusenje,
+                                        alkohol: alkohol,
+                                        zakljucak: mydata.odgovor.zakljucak,
+                                      },
+                                    });
+
+
+        let foundUser = await User.findOne({ mail: data_.mail }).exec();
+
+        if (!foundUser) {
+          return res.status(401).json({ message: "Korisnik nije nadjen" });
+        }
+
+        // const secret = process.env.JWT_SECRET + foundUser.password;
+        // const token = jwt.sign(
+        //   { id: foundUser._id, email: foundUser.mail },
+        //   secret,
+        //   {
+        //     expiresIn: "5m",
+        //   }
+        // );
+
+        //Send email
+        let link = `https://13.50.180.98:3000/dash/user/${foundUser._id}`; //Zameni localhost sa lajvom
+
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          host: "smtp.gmail.email",
+          port: 587,
+          secure: false,
+          auth: {
+            user: "office@nutritrans.com",
+            pass: "jezq ddqo aynu qucx",
+          },
+        });
+    
+        var mailOptions = {
+          from: "office@nutritrans.com",
+          to: data_.mail,
+          subject: "Generisanje Izveštaja",
+          // text: link,
+          html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+                      <h1 style="color: #333;">Uspešno kreirana ishrana!</h1>
+                      <p style="color: #555;">Vaš izveštaj je u obliku PDF-a, kliknite dole da bi ste ga pogledali</p>
+                      <a href="${link}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Idi na aplikaciju</a>
+                      <p style="color: #555; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj mail, Hvala.</p>
+                  </div>`,
+        };
+    
+        transporter.sendMail(mailOptions, function (error, info) {
+          if (error) {
+            // console.log(error);
+            res.status(400).json({ message: `Nije uspelo slanje na mail` });
+          } else {
+            res.status(200).json({ message: `Obavestenje za kreiran pdf poslato na ${mail}` });
+            // console.log("Email sent: " + info.response);
+          }
+        });
+
+        res.json({ 
+          status: "ok", 
+          message: "PDF je uspešno generisan i sačuvan.", 
+        });
+
+      } catch (err) {
+        console.error("Error saving PDF to database:", err);
+        res.status(500).send("Error saving PDF report.");
+      }
+    });
+
+    pdfDoc.end();
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    res.status(500).send("An error occurred while generating the PDF.");
+  }
+});
+
+//Testni - vraca samo celokupni objekat
+app.post("/zod-test", async (req, res) => {
+  const { brojDana, obroci, data_ } = req.body;
+  try {
+      // prompt - uvod
+      const uvodResult = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: `Kreiraj mi kratki uvodni text o ishrani sa primarnim ciljem mršavljenja` }],
+        max_tokens: 1000,
+      });
+      let uvod = uvodResult.choices[0]?.message?.content?.trim() || kratki.uvod;
+      uvod = uvod.replace(/[#!&*ü!_?-@**]/g, "");
+
+    // prompt - zakljucak
+    const zakljucakResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: `Kreiraj mi kratki zaključak text o ishrani sa primarnim ciljem mršavljenja` }],
+      max_tokens: 1000,
+    });
+    let zakljucak = zakljucakResult.choices[0]?.message?.content?.trim() || kratki.zakljucak;
+    zakljucak = zakljucak.replace(/[#!&*ü!_?-@**]/g, "");
+
+    // prompt - plan fizicke aktivnosti
+    const planFizAktResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki text o planu fizičke aktivnosti" }],
+      max_tokens: 1000,
+    });
+    let planFizAkt = planFizAktResult.choices[0]?.message?.content?.trim() || kratki.plan;
+    planFizAkt = planFizAkt.replace(/[#!&*ü!_?-@**]/g, "");
+    console.log('planFizAkt:', planFizAkt);
+
+    // prompt - imunološka podrška
+    const podrzkaImunResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki tekst o imunološku podršku" }],
+      max_tokens: 1000,
+    });
+    let podrzkaImun = podrzkaImunResult.choices[0]?.message?.content?.trim() || kratki.podrska;
+    podrzkaImun = podrzkaImun.replace(/[#!&*ü!_?-@**]/g, "");
+    console.log('podrzkaImun:', podrzkaImun);
+
+    // prompt - savet za spavanje
+    const spavanjeSavetResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki text o poboljšanje spavanja" }],
+      max_tokens: 1000,
+    });
+    let spavanjeSavet = spavanjeSavetResult.choices[0]?.message?.content?.trim() || kratki.spavanje;
+    spavanjeSavet = spavanjeSavet.replace(/[#!&*ü!_?-@**]/g, "");
+    console.log('spavanjeSavet:', spavanjeSavet);
+
+    // prompt - preporuka za unos vode
+    const prepVodaResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki text o unos vode" }],
+      max_tokens: 1000,
+    });
+    let prepVoda = prepVodaResult.choices[0]?.message?.content?.trim() || kratki.voda;
+    prepVoda = prepVoda.replace(/[#!&*ü!_?-@**]/g, "");
+    console.log('prepVoda:', prepVoda);
+
+    // Kreiranje odgovora
+    const odgovor = {
+      voda: prepVoda,
+      spavanje: spavanjeSavet,
+      podrska: podrzkaImun,
+      plan: planFizAkt,
+      uvod,
+      zakljucak
+    };
+
+    //Za ostale upite
+    planShema.parse(odgovor);
+
+    //Za dane
+    if (!brojDana || typeof brojDana !== "number") {
+      return res.status(400).json({ message: "Molimo unesite validan broj dana." });
+    }
+
+    const validObroci = ["doručak", "užina1", "ručak", "užina2", "večera"];
+    const chosenObroci = Array.isArray(obroci) && obroci.every(obrok => validObroci.includes(obrok))
+      ? obroci
+      : ["doručak", "užina1", "ručak", "užina2", "večera"];
+
+    const obrociPrompt = chosenObroci.map(obrok => {
+      switch (obrok) {
+        case "doručak":
+          return "doručak";
+        case "užina1":
+          return "užina";
+        case "ručak":
+          return "ručak";
+        case "užina2":
+          return "druga užina";
+        case "večera":
+          return "večera";
+        default:
+          return obrok;
+      }
+    }).join(", ");
+
+    const DaySchema = generateDaySchema(chosenObroci);
+    const FullWeekSchema = z.object({
+      days: z.array(DaySchema),
+    });
+
+  
+    const completion = await client.beta.chat.completions.parse({
+      model: 'gpt-4o-2024-08-06',
+      messages: [
+        {
+          role: "system",
+          content: "Ti si korisni nutricionista. Generiši plan ishrane u JSON formatu koristeći samo zadatu šemu. Nazivi dana treba da budu 'Dan 1', 'Dan 2', i tako dalje, a ne imena dana u nedelji.",
+        },
+        {
+          role: "user",
+          content: `Napravi plan ishrane za ${brojDana} dana sa sledećim obrocima: ${obrociPrompt}. Nemoj uključivati obroke koji nisu navedeni.`,
+        },
+      ],
+      response_format: zodResponseFormat(FullWeekSchema, 'mealPlan'),
+    });
+
+    let message = completion.choices[0]?.message.parsed;  //OVDE MOZDA PUKNE! ZBOG KARAKTERA
+    // message = message.replace(/[#!&*ü!_?-@**]/g, "");  //OVDE
+
+    // FullWeekSchema.parse(hol);
+
+    //Za holisticki pristup
+    const holPristupResult = await openai.chat.completions.create({
+      model: 'gpt-4o-2024-08-06',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an AI that provides detailed and clearly structured explanations on holistic approaches to health and wellness.',
+        },
+        {
+          role: 'user',
+          content: `Molim te da pružiš jasan i organizovan opis holističkog pristupa zdravlju, podeljen u posebne odeljke:
+                    1. Fizičko zdravlje: Kratak opis
+                    2. Zdrave navike: Kratak opis
+                    3. Preventivna nega: Kratak opis
+                    4. Održavanje bilansa: Kratak opis
+            Neka odgovori budu jasno strukturirani sa tačno definisanim odeljcima: 
+            '1. Fizičko zdravlje:', 
+            '2. Zdrave navike:', 
+            '3. Preventivna nega:', 
+            '4. Održavanje bilansa:' sa dvotačkom na kraju svakog naslova.`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 700,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+    });
+
+    // Generisani odgovor
+    let odgovor1 = holPristupResult.choices[0].message.content;
+    odgovor1 = odgovor1.replace(/[#!&*ü!_?-@**]/g, "");
+
+    // Provera da li su svi odeljci prisutni u odgovoru
+    if (
+      !odgovor1.includes('1. Fizičko zdravlje:') ||
+      !odgovor1.includes('2. Zdrave navike:') ||
+      !odgovor1.includes('3. Preventivna nega:') ||
+      !odgovor1.includes('4. Održavanje bilansa:')
+    ) {
+      return res.status(400).json({ error: "Odgovor nije u ispravnom formatu." });
+    }
+
+    //Defoltno ako nema defoltne vrenosti
+    const defaultHol = {
+      fizickoZdravlje: "Fizičko zdravlje se odnosi na dobrobit i funkcionalnost našeg tela. To uključuje stanje naših unutrašnjih organa, mišića, kostiju, kao i našu telesnu kondiciju i snagu. Holistički pristup fizičkom zdravlju prepoznaje da su svi ovi aspekti međusobno povezani i da su svi od suštinskog značaja za sveukupno zdravlje. To znači da se fokusiramo ne samo na lečenje simptoma, već i na razumijevanje i tretiranje uzroka.",
+      zdraveNavike: "Zdrave navike su ponašanja koja često praktikujemo i koja pozitivno utiču na naše fizičko, emocionalno i mentalno zdravlje. To može uključivati redovnu fizičku aktivnost, uravnoteženu ishranu, dovoljno sna, hidrataciju, kao i izbegavanje štetnih navika poput pušenja ili prekomernog konzumiranja alkohola. Holistički pristup zdravim navikama prepoznaje da su sve ove aktivnosti povezane i da promena jedne navike može imati širok spektar uticaja na naše zdravlje.",
+      preventivnaNega: "Preventivna nega je pristup zdravlju koji se fokusira na sprečavanje bolesti i stanja pre nego što se pojave, umesto da se bave samo njihovim lečenjem. To može uključivati redovne lekarske preglede, vakcinaciju, skrining za određene bolesti, kao i vođenje zdravog životnog stila. Holistički pristup prepoznaje važnost preventivne nege u održavanju dugoročnog zdravlja i dobrobiti.",
+      odrzavanjeBilansa: "Održavanje bilansa odnosi se na pronalaženje ravnoteže između različitih aspekata našeg života, uključujući fizičko zdravlje, emocionalno blagostanje, socijalne odnose, duhovnost i rad. Holistički pristup održavanju bilansa prepoznaje da su svi ovi aspekti međusobno povezani i da promene u jednom aspektu mogu uticati na druge. To znači da se teži za ravnotežom u svim oblastima života, a ne samo u jednoj."
+    }
+
+    // Podela odgovora u odgovarajuću strukturu
+    const hol = {
+      fizickoZdravlje: odgovor1.split('1. Fizičko zdravlje:')[1].split('2. Zdrave navike:')[0].trim() || defaultHol.fizickoZdravlje,
+      zdraveNavike: odgovor1.split('2. Zdrave navike:')[1].split('3. Preventivna nega:')[0].trim() || defaultHol.zdraveNavike,
+      preventivnaNega: odgovor1.split('3. Preventivna nega:')[1].split('4. Održavanje bilansa:')[0].trim() || defaultHol.preventivnaNega,
+      odrzavanjeBilansa: odgovor1.split('4. Održavanje bilansa:')[1].trim() || defaultHol.odrzavanjeBilansa,
+    };
+
+    // Validacija odgovora prema Zod shemi
+    holPristupShema.parse(hol);
+
+
+    res.json({
+      odgovor,
+      hol,
+      message
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Pojavio se error na serveru.' });
+  }
+});
+
+app.post("/prompts", async (req, res) => {
+  let { brojDana, obroci, data_ } = req.body;
+
+  let brojDanaInt = Number(brojDana)
+  
+  try {
+      // prompt - uvod
+      const uvodResult = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [{ role: "user", content: `Kreiraj mi kratki uvodni text o ishrani sa primarnim ciljem: ${data_.primcilj}` }],
+        max_tokens: 1000,
+      });
+      let uvod = uvodResult.choices[0]?.message?.content?.trim() || kratki.uvod;
+      uvod = uvod.replace(/[#!&*ü!_?-@**]/g, "");
+
+    // prompt - zakljucak
+    const zakljucakResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: `Kreiraj mi kratki zaključak text o ishrani sa primarnim ciljem: ${data_.primcilj}` }],
+      max_tokens: 1000,
+    });
+    let zakljucak = zakljucakResult.choices[0]?.message?.content?.trim() || kratki.zakljucak;
+    zakljucak = zakljucak.replace(/[#!&*ü!_?-@**]/g, "");
+
+    // prompt - plan fizicke aktivnosti
+    const planFizAktResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki text o planu fizičke aktivnosti" }],
+      max_tokens: 1000,
+    });
+    let planFizAkt = planFizAktResult.choices[0]?.message?.content?.trim() || kratki.plan;
+    planFizAkt = planFizAkt.replace(/[#!&*ü!_?-@**]/g, "");
+    // console.log('planFizAkt:', planFizAkt);
+
+    // prompt - imunološka podrška
+    const podrzkaImunResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki tekst o imunološku podršku" }],
+      max_tokens: 1000,
+    });
+    let podrzkaImun = podrzkaImunResult.choices[0]?.message?.content?.trim() || kratki.podrska;
+    podrzkaImun = podrzkaImun.replace(/[#!&*ü!_?-@**]/g, "");
+    // console.log('podrzkaImun:', podrzkaImun);
+
+    // prompt - savet za spavanje
+    const spavanjeSavetResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki text o poboljšanje spavanja" }],
+      max_tokens: 1000,
+    });
+    let spavanjeSavet = spavanjeSavetResult.choices[0]?.message?.content?.trim() || kratki.spavanje;
+    spavanjeSavet = spavanjeSavet.replace(/[#!&*ü!_?-@**]/g, "");
+    // console.log('spavanjeSavet:', spavanjeSavet);
+
+    // prompt - preporuka za unos vode
+    const prepVodaResult = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: "Kreiraj mi kratki text o unos vode" }],
+      max_tokens: 1000,
+    });
+    let prepVoda = prepVodaResult.choices[0]?.message?.content?.trim() || kratki.voda;
+    prepVoda = prepVoda.replace(/[#!&*ü!_?-@**]/g, "");
+    // console.log('prepVoda:', prepVoda);
+
+    // Kreiranje odgovora
+    const odgovor = {
+      voda: prepVoda,
+      spavanje: spavanjeSavet,
+      podrska: podrzkaImun,
+      plan: planFizAkt,
+      uvod: uvod,
+      zakljucak: zakljucak
+    };
+
+    //Za ostale upite
+    planShema.parse(odgovor);
+
+    //Za dane
+    if (!brojDanaInt || typeof brojDanaInt !== "number") {
+      return res.status(400).json({ message: "Molimo unesite validan broj dana." });
+    }
+
+    const validObroci = ["doručak", "užina1", "ručak", "užina2", "večera"];
+    const chosenObroci = Array.isArray(obroci) && obroci.every(obrok => validObroci.includes(obrok))
+      ? obroci
+      : ["doručak", "užina1", "ručak", "užina2", "večera"];
+
+    const obrociPrompt = chosenObroci.map(obrok => {
+      switch (obrok) {
+        case "doručak":
+          return "doručak";
+        case "užina1":
+          return "užina";
+        case "ručak":
+          return "ručak";
+        case "užina2":
+          return "druga užina";
+        case "večera":
+          return "večera";
+        default:
+          return obrok;
+      }
+    }).join(", ");
+
+    const DaySchema = generateDaySchema(chosenObroci);
+    const FullWeekSchema = z.object({
+      days: z.array(DaySchema),
+    });
+
+  
+    const completion = await client.beta.chat.completions.parse({
+      model: 'gpt-4o-2024-08-06',
+      messages: [
+        {
+          role: "system",
+          content: "Ti si korisni nutricionista. Generiši plan ishrane u JSON formatu koristeći samo zadatu šemu. Nazivi dana treba da budu 'Dan 1', 'Dan 2', i tako dalje, a ne imena dana u nedelji.",
+        },
+        {
+          role: "user",
+          content: `Napravi plan ishrane za ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}. Primarni cilj je ${data_.primcilj}, moja dnevna kalorijska vrednost iznosi ${data_.ukupnaKalVred}, naminice koje preferiram u ishrani: ${data_.voljeneNamirnice}, naminice koje ne preferiram u ishrani: ${data_.neVoljeneNamirnice}. Nemoj uključivati obroke koji nisu navedeni.`,
+        },
+      ],
+      response_format: zodResponseFormat(FullWeekSchema, 'mealPlan'),
+    });
+
+    let message = completion.choices[0]?.message.parsed;  //OVDE MOZDA PUKNE! ZBOG KARAKTERA
+    // message = message.replace(/[#!&*ü!_?-@**]/g, "");  //OVDE
+
+    // FullWeekSchema.parse(hol);
+
+    //Za holisticki pristup
+    const holPristupResult = await openai.chat.completions.create({
+      model: 'gpt-4o-2024-08-06',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an AI that provides detailed and clearly structured explanations on holistic approaches to health and wellness.',
+        },
+        {
+          role: 'user',
+          content: `Molim te da pružiš jasan i organizovan opis holističkog pristupa zdravlju, podeljen u posebne odeljke:
+                    1. Fizičko zdravlje: Kratak opis
+                    2. Zdrave navike: Kratak opis
+                    3. Preventivna nega: Kratak opis
+                    4. Održavanje bilansa: Kratak opis
+            Neka odgovori budu jasno strukturirani sa tačno definisanim odeljcima: 
+            '1. Fizičko zdravlje:', 
+            '2. Zdrave navike:', 
+            '3. Preventivna nega:', 
+            '4. Održavanje bilansa:' sa dvotačkom na kraju svakog naslova.`,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 700,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0,
+    });
+
+    // Generisani odgovor
+    let odgovor1 = holPristupResult.choices[0].message.content;
+    odgovor1 = odgovor1.replace(/[#!&*ü!_?-@**]/g, "");
+
+    // Provera da li su svi odeljci prisutni u odgovoru
+    if (
+      !odgovor1.includes('1. Fizičko zdravlje:') ||
+      !odgovor1.includes('2. Zdrave navike:') ||
+      !odgovor1.includes('3. Preventivna nega:') ||
+      !odgovor1.includes('4. Održavanje bilansa:')
+    ) {
+      return res.status(400).json({ error: "Odgovor nije u ispravnom formatu." });
+    }
+
+    //Defoltno ako nema defoltne vrenosti
+    const defaultHol = {
+      fizickoZdravlje: "Fizičko zdravlje se odnosi na dobrobit i funkcionalnost našeg tela. To uključuje stanje naših unutrašnjih organa, mišića, kostiju, kao i našu telesnu kondiciju i snagu. Holistički pristup fizičkom zdravlju prepoznaje da su svi ovi aspekti međusobno povezani i da su svi od suštinskog značaja za sveukupno zdravlje. To znači da se fokusiramo ne samo na lečenje simptoma, već i na razumijevanje i tretiranje uzroka.",
+      zdraveNavike: "Zdrave navike su ponašanja koja često praktikujemo i koja pozitivno utiču na naše fizičko, emocionalno i mentalno zdravlje. To može uključivati redovnu fizičku aktivnost, uravnoteženu ishranu, dovoljno sna, hidrataciju, kao i izbegavanje štetnih navika poput pušenja ili prekomernog konzumiranja alkohola. Holistički pristup zdravim navikama prepoznaje da su sve ove aktivnosti povezane i da promena jedne navike može imati širok spektar uticaja na naše zdravlje.",
+      preventivnaNega: "Preventivna nega je pristup zdravlju koji se fokusira na sprečavanje bolesti i stanja pre nego što se pojave, umesto da se bave samo njihovim lečenjem. To može uključivati redovne lekarske preglede, vakcinaciju, skrining za određene bolesti, kao i vođenje zdravog životnog stila. Holistički pristup prepoznaje važnost preventivne nege u održavanju dugoročnog zdravlja i dobrobiti.",
+      odrzavanjeBilansa: "Održavanje bilansa odnosi se na pronalaženje ravnoteže između različitih aspekata našeg života, uključujući fizičko zdravlje, emocionalno blagostanje, socijalne odnose, duhovnost i rad. Holistički pristup održavanju bilansa prepoznaje da su svi ovi aspekti međusobno povezani i da promene u jednom aspektu mogu uticati na druge. To znači da se teži za ravnotežom u svim oblastima života, a ne samo u jednoj."
+    }
+
+    // Podela odgovora u odgovarajuću strukturu
+    const hol = {
+      fizickoZdravlje: odgovor1.split('1. Fizičko zdravlje:')[1].split('2. Zdrave navike:')[0].trim() || defaultHol.fizickoZdravlje,
+      zdraveNavike: odgovor1.split('2. Zdrave navike:')[1].split('3. Preventivna nega:')[0].trim() || defaultHol.zdraveNavike,
+      preventivnaNega: odgovor1.split('3. Preventivna nega:')[1].split('4. Održavanje bilansa:')[0].trim() || defaultHol.preventivnaNega,
+      odrzavanjeBilansa: odgovor1.split('4. Održavanje bilansa:')[1].trim() || defaultHol.odrzavanjeBilansa,
+    };
+
+    // Validacija odgovora prema Zod shemi
+    holPristupShema.parse(hol);
+
+
+    res.json({
+      odgovor,
+      hol,
+      message
+    });
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Pojavio se error na serveru.' });
+  }
+});
+
+
+app.get("/zod", async (req, res) => {
+  try{
+
+    const Table = z.enum(['orders', 'customers', 'products']);
+    const Column = z.enum([
+        'id',
+        'status',
+        'expected_delivery_date',
+        'delivered_at',
+        'shipped_at',
+        'ordered_at',
+        'canceled_at',
+    ]);
+    const Operator = z.enum(['=', '>', '<', '<=', '>=', '!=']);
+    const OrderBy = z.enum(['asc', 'desc']);
+
+    const DynamicValue = z.object({
+        column_name: z.string(),
+    });
+
+    const Condition = z.object({
+        column: z.string(),
+        operator: Operator,
+        value: z.union([z.string(), z.number(), DynamicValue]),
+    });
+
+    const QueryArgs = z.object({
+        table_name: Table,
+        columns: z.array(Column),
+        conditions: z.array(Condition),
+        order_by: OrderBy,
+    });
+
+    const client = new OpenAI({
+      apiKey: process.env.OPEN_AI_KEY,
+  });
+
+    const completion = await client.beta.chat.completions.parse({
+        model: 'gpt-4o-2024-08-06',
+        messages: [
+            { role: 'system', content: 'You are a helpful assistant. The current date is August 6, 2024. You help users query for the data they are looking for by calling the query function.' },
+            { role: 'user', content: 'look up all my orders in may of last year that were fulfilled but not delivered on time' }
+        ],
+        tools: [zodFunction({ name: 'query', parameters: QueryArgs })],
+    });
+    res.json(completion.choices[0].message.tool_calls[0].function.parsed_arguments);
+    // console.log(completion.choices[0].message.tool_calls[0].function.parsed_arguments);
+
+  } catch (error) {
+    console.error("Greška:", error);
+    res.status(500).json({ 
+      status: "error", 
+      message: "Greška." 
+    });
+  }
+});
+
+const Step = z.object({
+    explanation: z.string(),
+    output: z.string(),
+})
+
+const MathResponse = z.object({
+    steps: z.array(Step),
+    final_answer: z.string(),
+})
+
+app.get("/zod1", async (req, res) => {
+
+  const client = new OpenAI({
+    apiKey: process.env.OPEN_AI_KEY,
+  });
+
+  try{
+    const completion = await client.beta.chat.completions.parse({
+          model: 'gpt-4o-2024-08-06',
+          messages: [
+              {
+                  "role": "system",
+                  "content": "You are a helpful math tutor. Only use the schema for math responses.",
+              },
+              { "role": "user", "content": "solve 8x + 3 = 21" },
+          ],
+          response_format: zodResponseFormat(MathResponse, 'mathResponse'),
+      });
+     
+      const message = completion.choices[0]?.message;
+      if (message?.parsed) {
+          console.log(message.parsed.steps);
+          console.log(message.parsed.final_answer);
+      } else {
+          console.log(message.refusal);
+      }
+      res.json(message);
+
+  } catch (error) {
+    console.error("Greška:", error);
+    res.status(500).json({ 
+      status: "error", 
+      message: "Greška." 
+    });
+  }
+
+});
+
+
+
+
+
+//Renderuje ejs
+app.get("/home", (req, res) => {
+  res.render("home");
+});
+
+//
+// app.get("/env", (req, res) => {
+//   res.json({ message: { 
+//     "DATABASE_URI": process.env.DATABASE_URI,
+//     "DATABASE_URI_DOCKER": process.env.DATABASE_URI_DOCKER,
+//     "JWT_SECRET": process.env.JWT_SECRET, 
+//     "ACCESS_TOKEN_SECRET": process.env.ACCESS_TOKEN_SECRET,
+//     "REFRESH_TOKEN_SECRET": process.env.REFRESH_TOKEN_SECRET,
+//     "SESSION_SECRET": process.env.SESSION_SECRET,
+//     "CLIENT_ID": process.env.CLIENT_ID,
+//     "CLIENT_SECRET": process.env.CLIENT_SECRET, 
+//     "OPEN_AI_KEY": process.env.OPEN_AI_KEY,
+//     "NODE_ENV": process.env.NODE_ENV,
+//     "PORT": process.env.PORT 
+//     } 
+//   });
+// });
+
+app.get("/about", (req, res) => {
+  res.json({ message: "Server up!" });
+});
+
+//
+app.all("*", (req, res) => {
+  res.status(404);
+  if (req.accepts("html")) {
+    res.sendFile(path.join(__dirname, "views", "404.html"));
+  } else if (req.accepts("json")) {
+    res.json({ message: "404 Not Found" });
+  } else {
+    res.type("txt").send("404 Not Found");
+  }
+});
+
+app.use(errorHandler);
+
+//==== TESTS ====
+let add = async () => {
+  const radnik = {
+    jmbg: "0204997710082",
+    pozicija: "Konobar",
+    sektor: "Banket",
+    netopalataIzUgovora: "50.000",
+    fixUgovoren: "70.000",
+    tipUgovora: "Na odrednjeno",
+    kafa: "Da",
+    zaRacDnev: "Da",
+  };
+
+  try {
+    const result = await Organizacije.updateOne(
+      { _id: mongoose.Types.ObjectId("66912365d2672debd94a4412") },
+      { $push: { zaposleni: radnik } }
+    );
+    console.log("Update:", result);
+  } catch (error) {
+    console.error("Error:", error);
+  }
+};
+
+// const transporter = nodemailer.createTransport({
+//   host: "smtp.ethereal.email",
+//   port: 587,
+//   secure: false, // Use `true` for port 465, `false` for all other ports
+//   auth: {
+//     user: "maddison53@ethereal.email",
+//     pass: "jn7jnAPss4f63QBp6D",
+//   },
+// });
+
+// app.get("sendemail", (req,res)=>{
+
+// })
+
+//==== TESTS ====
+
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    // add();
+  });
+});
+
+mongoose.connection.on("error", (err) => {
+  console.log(err);
+  logEvents(
+    `${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`,
+    "mongoErrLog.log"
+  );
+});

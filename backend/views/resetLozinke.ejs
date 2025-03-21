@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="sr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resetuj Lozinku</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 300px;
+    }
+
+    h1 {
+      font-size: 24px;
+      color: #333;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    input[type="password"],
+    input[type="submit"] {
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      width: calc(100% - 22px);
+    }
+
+    input[type="submit"] {
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      width: auto;
+      margin: 0 auto;
+      display: inline-block;
+    }
+
+    input[type="submit"]:hover {
+      background-color: #0056b3;
+    }
+
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Resetuj Lozinku</h1>
+    <p>Dobrodošli, <%= email %>
+    </p>
+    <form action="" method="post">
+      <div>
+        <input type="password" name="password" id="password" placeholder="Nova Lozinka" required />
+      </div>
+      <div>
+        <input type="password" name="confirm-password" id="confirm-password" placeholder="Potvrdi Lozinku" required />
+      </div>
+      <input type="submit" value="Potvrdi" />
+    </form>
+  </div>
+</body>
+
+</html>
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reset</title>
+  </head>
+  <body>
+    <h1><%= email%></h1>
+    <form action="" method="post">
+      <input
+        type="password"
+        name="password"
+        id="password"
+        placeholder="password"
+      /><br />
+      <input
+        type="password"
+        name="confirm-password"
+        id="confirm-password"
+        placeholder="confirm-password"
+      /><br />
+      <input type="submit" value="submit" />
+    </form>
+
+
+    
+  </body>
+</html> -->

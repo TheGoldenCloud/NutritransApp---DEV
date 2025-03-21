@@ -1,0 +1,50 @@
+{
+  "name": "lesson_13-be",
+  "version": "1.0.0",
+  "description": "techNotes MERN Project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server",
+    "dev": "nodemon server",
+    "style": "npx tailwindcss -i ./public/css/input.css -o ./public/css/output.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@langchain/core": "^0.3.17",
+    "axios": "^1.7.7",
+    "bcrypt": "^5.0.1",
+    "cookie-parser": "^1.4.6",
+    "cookie-session": "^2.1.0",
+    "cors": "^2.8.5",
+    "date-fns": "^2.29.1",
+    "dotenv": "^16.0.1",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-async-errors": "^3.1.1",
+    "express-rate-limit": "^6.5.1",
+    "express-session": "^1.18.0",
+    "googleapis": "^144.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "langchain": "^0.3.5",
+    "mongoose": "^6.5.0",
+    "mongoose-sequence": "^5.3.1",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.15",
+    "openai": "^4.71.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth2": "^0.2.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pdfkit": "^0.15.0",
+    "uuid": "^8.3.2",
+    "xlsx": "^0.18.5",
+    "xml2js": "^0.6.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.19",
+    "tailwindcss": "^3.4.10"
+  }
+}

@@ -1,0 +1,787 @@
+const PDFDocument = require("pdfkit");
+const fs = require("fs");
+
+function buildPDF(content, metaData, dataCallback, endCallback) {
+  const doc = new PDFDocument({
+    bufferPages: true,
+    margins: { top: 30, bottom: 30, left: 30, right: 30 },
+  });
+
+  // Učitajte prilagođeni font koji podržava srpsku latinicu
+  doc.registerFont(
+    "OpenSans_Condensed-Regular",
+    "./fonts/OpenSans_Condensed-Regular.ttf"
+  );
+
+  doc.on("data", dataCallback);
+  doc.on("end", endCallback);
+
+  // Naslov dokumenta
+  doc
+    .font("OpenSans_Condensed-Regular")
+    .fillColor("#333333")
+    .fontSize(30)
+    .text("Nutricionistički opis", {
+      align: "center",
+      underline: true,
+      bold: true,
+    });
+
+  doc.moveDown();
+  doc
+    .fillColor("#000000")
+    .fontSize(12)
+    .text(
+      `Da biste efikasno povećali mišićnu masu, ključno je unositi dovoljno proteina, ugljenih hidrata i zdravih masti kroz redovne i izbalansirane obroke. Fokus na kvalitetne izvore hrane pomoći će vašem telu da se oporavi, rastete i adaptirate tokom treninga. Ponuda raznovrsnih namirnica obezbeđuje optimalan unos vitamina i minerala, što je od suštinskog značaja za ukupno zdravlje i performanse.
+`,
+      { align: "justify" }
+    );
+
+  // Definišemo plan ishrane
+  const days = [
+    {
+      day: 1,
+      meals: [
+        {
+          name: "Doručak",
+          description:
+            "Omlet od tri jajeta sa spanaćem i feta sirom, kriška integralnog hleba, svež sok od narandže",
+        },
+        {
+          name: "Užina",
+          description: "Smoothie od banane, bademovog mleka i malina",
+        },
+        {
+          name: "Ručak",
+          description:
+            "Grilovana piletina sa kvinojom i salatom od rukole, krastavca i paradajza",
+        },
+        { name: "Užina", description: "Jabuka i šaka badema" },
+        {
+          name: "Večera",
+          description: "Losos pečen u rerni sa batatom i blitvom",
+        },
+      ],
+    },
+    {
+      day: 2,
+      meals: [
+        {
+          name: "Doručak",
+          description: "Zobena kaša sa borovnicama, medom i chia semenkama",
+        },
+        { name: "Užina", description: "Kivi i šaka oraha" },
+        {
+          name: "Ručak",
+          description: "Goveđi gulaš sa pireom od krompira i šargarepom",
+        },
+        {
+          name: "Užina",
+          description: "Mandarina i šaka suncokretovih semenki",
+        },
+        {
+          name: "Večera",
+          description: "Tuna salata sa kuvanim jajima i maslinama",
+        },
+      ],
+    },
+    // Dodajte ostale dane na isti način
+  ];
+
+  // Funkcija za iscrtavanje ulepsane tabele
+  function drawTable(
+    doc,
+    headers,
+    rows,
+    startX,
+    startY,
+    rowHeight,
+    columnWidths
+  ) {
+    let y = startY;
+
+    // Header tabele
+    doc.fontSize(12).fillColor("#ffffff");
+
+    headers.forEach((text, i) => {
+      doc
+        .rect(
+          startX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+          y,
+          columnWidths[i],
+          rowHeight
+        )
+        .fill("#4a90e2")
+        .stroke()
+        .fillColor("#ffffff")
+        .text(
+          text,
+          startX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0) + 5,
+          y + 5,
+          {
+            width: columnWidths[i] - 10,
+            align: "left",
+            bold: true,
+          }
+        );
+    });
+
+    y += rowHeight;
+
+    // Redovi
+    rows.forEach((row, rowIndex) => {
+      row.forEach((text, i) => {
+        doc
+          .rect(
+            startX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0),
+            y,
+            columnWidths[i],
+            rowHeight
+          )
+          .fill(rowIndex % 2 === 0 ? "#f0f0f0" : "#ffffff") // Alternativna boja redova
+          .stroke()
+          .fillColor("#000000")
+          .text(
+            text,
+            startX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0) + 5,
+            y + 5,
+            {
+              width: columnWidths[i] - 10,
+              align: "left",
+            }
+          );
+      });
+      y += rowHeight;
+    });
+  }
+
+  // Iteriramo kroz svaki dan, dodajemo sadržaj za svaki dan na novu stranicu
+  days.forEach((day, index) => {
+    if (index > 0) doc.addPage();
+
+    // Naslov za dan
+    doc
+      .fontSize(20)
+      .fillColor("#333333")
+      .text(`Dan ${day.day}`, { align: "center", underline: true });
+
+    // Definišemo tabelu
+    const tableTop = doc.y + 20;
+    const headers = ["Obrok", "Opis"];
+    const rows = day.meals.map((meal) => [meal.name, meal.description]);
+    const columnWidths = [100, 400];
+    const rowHeight = 30;
+
+    // Crtamo tabelu
+    drawTable(doc, headers, rows, 50, tableTop, rowHeight, columnWidths);
+  });
+
+  // Dodaj zaključak na poslednjoj stranici
+  doc.addPage();
+  doc.fillColor("#333333").fontSize(20).text("Zaključak", { underline: true });
+
+  doc.fillColor("#000000").fontSize(12).text(`
+Ovaj sedmodnevni plan ishrane pruža raznovrsne hranljive materije potrebne za rast i oporavak mišića. Izbalansirani obroci optimizuju unos proteina, ugljenih hidrata i masti, obezbeđujući adekvatnu kalorijsku podršku vašim ciljevima. Redovni obroci takođe osiguravaju dugotrajnu energiju i podržavaju sveukupno zdravlje. Kombinujte ovu ishranu s redovnom fizičkom aktivnošću za najbolje rezultate.
+`);
+
+  // Dodavanje brojeva stranica na sve stranice sa sadržajem
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(i);
+
+    // Postavljanje broja stranice u podnožje svake strane
+    const oldBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0; // Omogućava pisanje u donjem delu
+    doc
+      .fontSize(10)
+      .fillColor("#333333")
+      .text(
+        `Strana ${i + 1} od ${pages.count}`,
+        0,
+        doc.page.height - oldBottomMargin - 15, // Pomeranje na gore
+        { align: "center" }
+      );
+    doc.page.margins.bottom = oldBottomMargin; // Vraća marginu nazad
+  }
+
+  // Završava dokument
+  doc.end();
+}
+
+module.exports = { buildPDF };
+
+// SA UKLJUCENIM DINAMINCIM OBROCIMA
+
+const PDFDocument = require("pdfkit");
+
+function buildPDF(content, newData, dataCallback, endCallback) {
+  const doc = new PDFDocument({
+    bufferPages: true,
+    margins: { top: 30, bottom: 30, left: 30, right: 30 },
+  });
+
+  doc.on("data", dataCallback);
+  doc.on("end", endCallback);
+
+  // Učitajte prilagođeni font koji podržava srpsku latinicu
+  doc.registerFont(
+    "OpenSans_Condensed-Regular",
+    "./fonts/OpenSans_Condensed-Regular.ttf"
+  );
+
+  // Parsiramo `content` u sekcije na osnovu obrazaca
+  const sections = content.split("\n\n");
+
+  // Lista obroka iz `newData.ucestBr`, razdvojena po zarezima
+  const mealsToInclude = newData.ucestBr.split(", ").map(meal => meal.toLowerCase());
+
+  sections.forEach((section) => {
+    if (section.startsWith("Nutricionistički opis")) {
+      // Naslov dokumenta
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(24)
+        .text(section, { align: "center", underline: true });
+      doc.moveDown();
+    } else if (section.startsWith("Sedmodnevni plan ishrane")) {
+      // Podnaslov za plan ishrane
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(18)
+        .text(section, { align: "left", underline: true });
+      doc.moveDown();
+    } else if (/^Dan \d/.test(section)) {
+      // Sekcija za svaki dan sa obrocima
+      const [dayTitle, ...meals] = section.split("\n- "); // Razdvajamo naslov dana od obroka
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(16)
+        .text(dayTitle, { align: "left", underline: true });
+      doc.moveDown(0.5);
+
+      meals.forEach((meal) => {
+        // Proveravamo da li je obrok prisutan u `mealsToInclude`
+        const mealType = meal.split(":")[0].trim().toLowerCase();
+        if (mealsToInclude.includes(mealType)) {
+          doc
+            .font("OpenSans_Condensed-Regular")
+            .fillColor("#000000")
+            .fontSize(12)
+            .text(`- ${meal}`, { align: "left", indent: 20 });
+          doc.moveDown(0.3);
+        }
+      });
+
+      doc.moveDown(1);
+    } else if (section.startsWith("Zaključak")) {
+      // Zaključak na kraju
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text("Zaključak", { underline: true });
+      doc.moveDown();
+      doc
+        .fontSize(12)
+        .fillColor("#000000")
+        .text(section.replace("Zaključak\n", ""), { align: "justify" });
+    } else {
+      // Ostali paragrafi (npr. uvodni tekst)
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#000000")
+        .fontSize(12)
+        .text(section, { align: "justify" });
+      doc.moveDown();
+    }
+  });
+
+  // Dodavanje brojeva stranica na sve stranice sa sadržajem
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(i);
+
+    // Postavljanje broja stranice u podnožje svake strane
+    const oldBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0; // Omogućava pisanje u donjem delu
+    doc
+      .fontSize(10)
+      .fillColor("#333333")
+      .text(
+        `Strana ${i + 1} od ${pages.count}`,
+        0,
+        doc.page.height - oldBottomMargin - 15, // Pomeranje na gore
+        { align: "center" }
+      );
+    doc.page.margins.bottom = oldBottomMargin; // Vraća marginu nazad
+  }
+
+  // Završava dokument
+  doc.end();
+}
+
+module.exports = { buildPDF };
+
+//
+
+const PDFDocument = require("pdfkit");
+
+function buildPDF(content, newData, dataCallback, endCallback) {
+  const doc = new PDFDocument({
+    bufferPages: true,
+    margins: { top: 30, bottom: 30, left: 30, right: 30 },
+  });
+
+  doc.on("data", dataCallback);
+  doc.on("end", endCallback);
+
+  // Učitajte prilagođeni font koji podržava srpsku latinicu
+  doc.registerFont(
+    "OpenSans_Condensed-Regular",
+    "./fonts/OpenSans_Condensed-Regular.ttf"
+  );
+
+  // Naslov na prvoj stranici
+  doc
+    .font("OpenSans_Condensed-Regular")
+    .fillColor("#333333")
+    .fontSize(24)
+    .text("Nutricionistički plan ishrane", { align: "center", underline: true });
+  doc.moveDown(2);
+
+  // Parsiramo `content` u sekcije na osnovu obrazaca
+  const sections = content.split("\n\n");
+
+  // Lista obroka iz `newData.ucestBr`, razdvojena po zarezima
+  const mealsToInclude = newData.ucestBr.split(", ").map((meal) => meal.toLowerCase());
+
+  sections.forEach((section) => {
+    if (section.startsWith("Nutricionistički opis") || section.startsWith("Nutritivni opis") || section.startsWith("Nutristički opis")) {
+      // Prikaz uvodnog opisa na prvoj stranici
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text(section, { align: "justify" });
+      doc.moveDown();
+    } else if (/^Dan \d/.test(section)) {
+      // Prelazak na novu stranicu za svaki dan
+      doc.addPage();
+
+      // Sekcija za svaki dan sa obrocima
+      const [dayTitle, ...meals] = section.split("\n- ");
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(16)
+        .text(dayTitle, { align: "left", underline: true });
+      doc.moveDown(0.5);
+
+      meals.forEach((meal) => {
+        // Filtriranje obroka prema `mealsToInclude`
+        const mealType = meal.split(":")[0].trim().toLowerCase();
+        if (mealsToInclude.includes(mealType)) {
+          doc
+            .font("OpenSans_Condensed-Regular")
+            .fillColor("#000000")
+            .fontSize(12)
+            .text(`- ${meal}`, { align: "left", indent: 20 });
+          doc.moveDown(0.3);
+        }
+      });
+
+      doc.moveDown(1);
+    } else if (section.startsWith("Zaključak")) {
+      // Prelazak na novu stranicu za zaključak
+      doc.addPage();
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text("Zaključak", { underline: true });
+      doc.moveDown();
+      // doc
+      //   .fontSize(12)
+      //   .fillColor("#000000")
+      //   .text(section.replace("Zaključak\n", ""), { align: "justify" });
+    }
+  });
+
+  // Dodavanje brojeva stranica na sve stranice sa sadržajem
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(i);
+
+    // Postavljanje broja stranice u podnožje svake strane
+    const oldBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0; // Omogućava pisanje u donjem delu
+    doc
+      .fontSize(10)
+      .fillColor("#333333")
+      .text(
+        `Strana ${i + 1} od ${pages.count}`,
+        0,
+        doc.page.height - oldBottomMargin - 15,
+        { align: "center" }
+      );
+    doc.page.margins.bottom = oldBottomMargin; // Vraća marginu nazad
+  }
+
+  // Završava dokument
+  doc.end();
+}
+
+module.exports = { buildPDF };
+
+// OK SAMO NEMA KOMNENTAR
+
+const PDFDocument = require("pdfkit");
+
+function buildPDF(content, newData, dataCallback, endCallback) {
+  const doc = new PDFDocument({
+    bufferPages: true,
+    margins: { top: 30, bottom: 30, left: 30, right: 30 },
+  });
+
+  doc.on("data", dataCallback);
+  doc.on("end", endCallback);
+
+  // Učitajte prilagođeni font koji podržava srpsku latinicu
+  doc.registerFont(
+    "OpenSans_Condensed-Regular",
+    "./fonts/OpenSans_Condensed-Regular.ttf"
+  );
+
+  // Naslov na prvoj stranici
+  doc
+    .font("OpenSans_Condensed-Regular")
+    .fillColor("#333333")
+    .fontSize(24)
+    .text("Nutricionistički plan ishrane", { align: "center", underline: true });
+  doc.moveDown(2);
+
+  // Parsiramo `content` u sekcije na osnovu obrazaca
+  const sections = content.split("\n\n");
+
+  // Lista obroka iz `newData.ucestBr`, razdvojena po zarezima
+  const mealsToInclude = newData.ucestBr.split(", ").map((meal) => meal.toLowerCase());
+
+  sections.forEach((section) => {
+    if (section.startsWith("Nutricionistički opis") || section.startsWith("Nutritivni opis") || section.startsWith("Nutristički opis")) {
+      // Prikaz uvodnog opisa na prvoj stranici
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text(section, { align: "justify" });
+      doc.moveDown();
+    } else if (/^Dan \d/.test(section)) {
+      // Prelazak na novu stranicu za svaki dan
+      doc.addPage();
+
+      // Sekcija za svaki dan sa obrocima
+      const [dayTitle, ...meals] = section.split("\n- ");
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(16)
+        .text(dayTitle, { align: "left", underline: true });
+      doc.moveDown(0.5);
+
+      meals.forEach((meal) => {
+        // Filtriranje obroka prema `mealsToInclude`
+        const mealType = meal.split(":")[0].trim().toLowerCase();
+        if (mealsToInclude.includes(mealType)) {
+          doc
+            .font("OpenSans_Condensed-Regular")
+            .fillColor("#000000")
+            .fontSize(12)
+            .text(`- ${meal}`, { align: "left", indent: 20 });
+          doc.moveDown(0.3);
+        }
+      });
+
+      doc.moveDown(1);
+    } else if (section.startsWith("Zaključak")) {
+      // Prelazak na novu stranicu za zaključak
+      doc.addPage();
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text("Zaključak", { underline: true });
+      doc.moveDown();
+      // doc
+      //   .fontSize(12)
+      //   .fillColor("#000000")
+      //   .text(section.replace("Zaključak\n", ""), { align: "justify" });
+    }
+  });
+
+  // Dodavanje brojeva stranica na sve stranice sa sadržajem
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(i);
+
+    // Postavljanje broja stranice u podnožje svake strane
+    const oldBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0; // Omogućava pisanje u donjem delu
+    doc
+      .fontSize(10)
+      .fillColor("#333333")
+      .text(
+        `Strana ${i + 1} od ${pages.count}`,
+        0,
+        doc.page.height - oldBottomMargin - 15,
+        { align: "center" }
+      );
+    doc.page.margins.bottom = oldBottomMargin; // Vraća marginu nazad
+  }
+
+  // Završava dokument
+  doc.end();
+}
+
+module.exports = { buildPDF };
+
+//IMA I ZAKLJUCAK
+
+const PDFDocument = require("pdfkit");
+
+function buildPDF(content, newData, dataCallback, endCallback) {
+  const doc = new PDFDocument({
+    bufferPages: true,
+    margins: { top: 30, bottom: 30, left: 30, right: 30 },
+  });
+
+  doc.on("data", dataCallback);
+  doc.on("end", endCallback);
+
+  // Učitajte prilagođeni font koji podržava srpsku latinicu
+  doc.registerFont(
+    "OpenSans_Condensed-Regular",
+    "./fonts/OpenSans_Condensed-Regular.ttf"
+  );
+
+  // Naslov na prvoj stranici
+  doc
+    .font("OpenSans_Condensed-Regular")
+    .fillColor("#333333")
+    .fontSize(24)
+    .text("Nutricionistički plan ishrane", { align: "center", underline: true });
+  doc.moveDown(2);
+
+  // Parsiramo `content` u sekcije na osnovu obrazaca
+  const sections = content.split("\n\n");
+
+  // Lista obroka iz `newData.ucestBr`, razdvojena po zarezima
+  const mealsToInclude = newData.ucestBr.split(", ").map((meal) => meal.toLowerCase());
+
+  sections.forEach((section) => {
+    if (section.startsWith("Nutricionistički opis") || section.startsWith("Nutritivni opis") || section.startsWith("Nutristički opis")) {
+      // Prikaz uvodnog opisa na prvoj stranici
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text(section, { align: "justify" });
+      doc.moveDown();
+    } else if (/^Dan \d/.test(section)) {
+      // Prelazak na novu stranicu za svaki dan
+      doc.addPage();
+
+      // Sekcija za svaki dan sa obrocima
+      const [dayTitle, ...meals] = section.split("\n- ");
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(16)
+        .text(dayTitle, { align: "left", underline: true });
+      doc.moveDown(0.5);
+
+      meals.forEach((meal) => {
+        // Filtriranje obroka prema `mealsToInclude`
+        const mealType = meal.split(":")[0].trim().toLowerCase();
+        if (mealsToInclude.includes(mealType)) {
+          doc
+            .font("OpenSans_Condensed-Regular")
+            .fillColor("#000000")
+            .fontSize(12)
+            .text(`- ${meal}`, { align: "left", indent: 20 });
+          doc.moveDown(0.3);
+        }
+      });
+
+      doc.moveDown(1);
+    } else if (section.startsWith("Zaključak")) {
+      // Prelazak na novu stranicu za zaključak
+      doc.addPage();
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text("Zaključak", { underline: true });
+      doc.moveDown();
+      
+      const conclusionText = section.replace("Zaključak:\n", "");
+      doc
+        .fontSize(12)
+        .fillColor("#000000")
+        .text(conclusionText, { align: "justify" });
+    }
+  });
+
+  // Dodavanje brojeva stranica na sve stranice sa sadržajem
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(i);
+
+    // Postavljanje broja stranice u podnožje svake strane
+    const oldBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0; // Omogućava pisanje u donjem delu
+    doc
+      .fontSize(10)
+      .fillColor("#333333")
+      .text(
+        `Strana ${i + 1} od ${pages.count}`,
+        0,
+        doc.page.height - oldBottomMargin - 15,
+        { align: "center" }
+      );
+    doc.page.margins.bottom = oldBottomMargin; // Vraća marginu nazad
+  }
+
+  // Završava dokument
+  doc.end();
+}
+
+module.exports = { buildPDF };
+
+// ADJUSTOVANO SVE OSIM TABELA
+
+const PDFDocument = require("pdfkit");
+
+function buildPDF(content, newData, dataCallback, endCallback) {
+  const doc = new PDFDocument({
+    bufferPages: true,
+    margins: { top: 30, bottom: 30, left: 30, right: 30 },
+  });
+
+  doc.on("data", dataCallback);
+  doc.on("end", endCallback);
+
+  // Učitajte prilagođeni font koji podržava srpsku latinicu
+  doc.registerFont(
+    "OpenSans_Condensed-Regular",
+    "./fonts/OpenSans_Condensed-Regular.ttf"
+  );
+
+  // Naslov na prvoj stranici
+  doc
+    .font("OpenSans_Condensed-Regular")
+    .fillColor("#333333")
+    .fontSize(24)
+    .text("Nutricionistički plan ishrane", { align: "center", underline: true });
+  doc.moveDown(2);
+
+  // Parsiramo `content` u sekcije na osnovu obrazaca
+  const sections = content.split("\n\n");
+
+  // Lista obroka iz `newData.ucestBr`, razdvojena po zarezima
+  const mealsToInclude = newData.ucestBr.split(", ").map((meal) => meal.toLowerCase());
+
+  sections.forEach((section) => {
+    if (section.startsWith("Nutricionistički opis") || section.startsWith("Nutritivni opis") || section.startsWith("Nutristički opis")) {
+      // Naslov uvodnog opisa sa istom veličinom kao Zaključak
+      const introTitle = section.split("\n")[0];  // Prva linija kao naslov
+      const introText = section.split("\n").slice(1).join("\n"); // Tekst ispod naslova
+      
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)  // Ista veličina kao Zaključak
+        .text(introTitle, { align: "justify" });
+      doc.moveDown(0.5);
+
+      // Tekst ispod naslova ostaje manji
+      doc
+        .fontSize(12)
+        .fillColor("#000000")
+        .text(introText, { align: "justify" });
+      doc.moveDown();
+    } else if (/^(\*{0,2}Dan \d+\*{0,2}:)/.test(section)) {
+      // Prelazak na novu stranicu za svaki dan
+      doc.addPage();
+
+      // Sekcija za svaki dan sa obrocima
+      const [dayTitleRaw, ...meals] = section.split("\n- ");
+      const dayTitle = dayTitleRaw.replace(/^\*{0,2}(Dan \d+)\*{0,2}:/, "$1:"); // Uklanja zvezdice iz naslova
+
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(16) // Naslov dana bez podvlačenja
+        .text(dayTitle, { align: "left" });
+      doc.moveDown(0.5);
+
+      // Prikaz obroka
+      meals.forEach((meal) => {
+        const mealType = meal.split(":")[0].trim().toLowerCase();
+        if (mealsToInclude.includes(mealType)) {
+          doc
+            .font("OpenSans_Condensed-Regular")
+            .fillColor("#000000")
+            .fontSize(12)
+            .text(`- ${meal}`, { align: "left", indent: 20 });
+          doc.moveDown(0.3);
+        }
+      });
+
+      doc.moveDown(1);
+    } else if (section.startsWith("Zaključak")) {
+      // Prelazak na novu stranicu za zaključak
+      doc.addPage();
+      doc
+        .font("OpenSans_Condensed-Regular")
+        .fillColor("#333333")
+        .fontSize(20)
+        .text("Zaključak", { underline: true });
+      doc.moveDown();
+      
+      const conclusionText = section.replace("Zaključak:\n", "");
+      doc
+        .fontSize(12)
+        .fillColor("#000000")
+        .text(conclusionText, { align: "justify" });
+    }
+  });
+
+  // Dodavanje brojeva stranica na sve stranice sa sadržajem
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(i);
+
+    // Postavljanje broja stranice u podnožje svake strane
+    const oldBottomMargin = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0; // Omogućava pisanje u donjem delu
+    doc
+      .fontSize(10)
+      .fillColor("#333333")
+      .text(
+        `Strana ${i + 1} od ${pages.count}`,
+        0,
+        doc.page.height - oldBottomMargin - 15,
+        { align: "center" }
+      );
+    doc.page.margins.bottom = oldBottomMargin; // Vraća marginu nazad
+  }
+
+  // Završava dokument
+  doc.end();
+}
+
+module.exports = { buildPDF };
+

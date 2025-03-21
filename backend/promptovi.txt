@@ -1,0 +1,51 @@
+1. SA SVIM PODACIMA
+Na osnovu svoje trenutne težine od 80 kg, primarni cilj mi je da smanjim telesnu masu za 10 kg, a specifičan cilj 
+je da to postignem u naredna tri meseca, motivisan željom za boljim zdravljem i više energije, uz napomenu da 
+sam prilikom planiranja ishrane uzela u obzir svoj umeren nivo aktivnosti i dijagnozu hipertenzije, 
+kao i alergiju na orašaste plodove.
+
+2. BEZ SPEC CILJA
+Na osnovu svoje trenutne težine od 80 kg, cilj mi je da smanjim telesnu masu za 10 kg, a specifičan cilj 
+je da to postignem u naredna tri meseca, motivisan željom za boljim zdravljem i više energije, uz napomenu da 
+sam prilikom planiranja ishrane uzela u obzir svoj umeren nivo aktivnosti i dijagnozu hipertenzije, 
+kao i alergiju na orašaste plodove.
+
+ZA PROMPT
+Trenutna tezina, OK
+Pol,  OK
+Godine, 
+visna, OK
+primaran cilj, OK 
+specifican cilj, OK
+zadravstvena dijagnoza,  
+ucestalost obroka, 
+navike u ishrani, 
+namirnice
+
+//Ovo se dodaje u bazu
+Trenutna tezina
+primaran cilj
+specifican cilj
+zadravstvena dijagnoza,  
+ucestalost obroka, 
+navike u ishrani, 
+namirnice //Vec def
+
+//
+Trenutna tezina
+vrstaIshrane (vezano je za namirnice)
+Primaran cilj
+specifican cilj
+zadravstvena dijagnoza
+ucestalost obroka
+navike u ishrani
+namirnice
+motivacija
+komentarCilja
+prethodna iskustva u dijetama
+
+
+Na osnovu svoje trenutne težine od 75 kg, kao muškarac od 30 godina i visine 180 cm, primarni cilj mi je da 
+povećam mišićnu masu, a specifičan cilj je da dobijem 5 kg u narednih šest meseci, uzimajući u obzir moju dijagnozu
+hipoglikemije; planiram da imam 5 obroka dnevno, prilagoditi svoje navike u ishrani tako da uključim više 
+proteina, a u ishrani ću se fokusirati na piletinu, brokoli, integralne žitarice i avokado.
