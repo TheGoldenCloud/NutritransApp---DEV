@@ -286,7 +286,7 @@ const register = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    const verificationLink = `https://nutritrans.rs:5000/verify-email?token=${verificationToken}`;
+    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
     // const verificationLink = `http://localhost:5000/verify-email?token=${verificationToken}`;
 
     const transporter = nodemailer.createTransport({
@@ -311,7 +311,7 @@ const register = async (req, res) => {
       //           <p style="color: #555; margin-top: 20px;">Molimo vas da ne odgovarate na ovaj email. Hvala.</p>
       //       </div>`,
       html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-                <img src="https://nutritrans.rs:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+                <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                 <h1 style="color: #333; font-size: 28px;">🎉 Dobrodošli na Nutri Trans! 🎉</h1>
                 <p style="color: #555; font-size: 18px;">Da biste uspešno završili registraciju, kliknite na dugme ispod da biste aktivirali svoj nalog.</p>
                 
@@ -336,7 +336,7 @@ const register = async (req, res) => {
           to: profile.emails[0].value,
           subject: "Propratne informacije",
           html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-                <img src="https://nutritrans.rs:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+                <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                 <h1 style="color: #333; font-size: 28px;">📃 Uputstvo za Nutri Trans! 📃</h1>
                 <p style="color: #555; font-size: 18px;">U prilogu Vam šaljemo PDF dokument vezan za Nutri Trans aplikaciju. Molimo Vas da ga pregledate i javite nam ako imate bilo kakvih pitanja ili potrebna dodatna pojašnjenja.</p>
                 
@@ -394,7 +394,7 @@ const forgot_password = async (req, res) => {
       }
     );
 
-    const link = `https://nutritrans.rs:5000/auth/reset_password/${foundUser._id}/${token}`;
+    const link = `${process.env.FRONTEND_URL}:5000/auth/reset_password/${foundUser._id}/${token}`;
     // const link = `http://localhost:5000/auth/reset_password/${foundUser._id}/${token}`;
 
     const transporter = nodemailer.createTransport({
@@ -420,7 +420,7 @@ const forgot_password = async (req, res) => {
       //         <p style="color: #555; margin-top: 20px;">Ako niste poslali zahtev za resetovanje šifre onda ignorišite ovaj mail.</p>
       //       </div>`,
       html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-                <img src="https://nutritrans.rs:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+                <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                 <h1 style="color: #333; font-size: 28px;">🔒 Zahtev za aktivaciju profila 🔒</h1>
                 <p style="color: #555; font-size: 18px;">Dobili smo zahtev za resetovanje Vaše šifre. Kliknite na dugme ispod da biste je resetovali.</p>
                 
