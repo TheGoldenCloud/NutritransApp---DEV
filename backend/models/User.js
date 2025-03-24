@@ -1,62 +1,25 @@
 const mongoose = require("mongoose");
 
-// const userSchema = new mongoose.Schema({
-//     name: {
-//         type: String,
-//         required: false
-//     },
-//     lastName: {
-//         type: String,
-//         required: false
-//     },
-//     plata: {
-//         type: String,
-//         required: false
-//     },
-//     jmbg: {
-//         type: String,
-//         required: false
-//     },
-//     status: {
-//         type: String,
-//         required: false
-//     },
-//     valuta: {
-//         type: String,
-//         required: false
-//     },
-//     roles: {
-//         type: [String],
-//         default: [""]
-//     },
-//     active: {
-//         type: Boolean,
-//         default: false
-//     }
-// }) name  lastName  mail pol komentar
-
-//Treba da se dodaju: 
-//Primaran cilj, Specijalni cilj, Motivacija, Komentar, sedentan, vrsta fizicke aktivnosti, dijagnoze
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   lastName: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   primcilj: {
     type: String,
     required: false,
-    default: "Mršavljenje"
+    default: "Mršavljenje",
   },
   motiv: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   ukupnaKalVred: {
     type: String,
@@ -73,52 +36,52 @@ const userSchema = new mongoose.Schema({
   datumRodjenja: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   pol: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   telefon: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   visina: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   tezina: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   struk: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   imunitet: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   kuk: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   vrat: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   krvGru: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   uputstvo: {
     type: Boolean,
@@ -140,22 +103,22 @@ const userSchema = new mongoose.Schema({
   actlvl: {
     type: String,
     required: false,
-    default: "1.2"
+    default: "1.2",
   },
   tdee: {
     type: String,
     required: false,
-    default: ""    
+    default: "",
   },
   komCilja: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   alergije: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   roles: {
     type: [String],
@@ -165,30 +128,31 @@ const userSchema = new mongoose.Schema({
     type: [String],
     required: false,
   },
-  selectedDefTip: { //Tip specificnog cilja
+  selectedDefTip: {
+    //Tip specificnog cilja
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   godine: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   dijagnoza: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   ucestBr: {
     type: String,
     required: false,
-    default: "doručak, ručak, večera"
+    default: "doručak, ručak, večera",
   },
   navikeUish: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   namirnice: {
     type: [String],
@@ -201,47 +165,49 @@ const userSchema = new mongoose.Schema({
   selectedIshranaNaziv: {
     type: String,
     required: false,
-    default: "Tvoja ishrana"
+    default: "Tvoja ishrana",
   },
   selectedIshrana: {
     type: String,
     required: false,
-    default: "Tvoja ishrana"
+    default: "Tvoja ishrana",
   },
   voljeneNamirnice: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   neVoljeneNamirnice: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
-  allergiesEnabled: { //Da li ima alergije na gluten/laktoza 
+  allergiesEnabled: {
+    //Da li ima alergije na gluten/laktoza
     type: String,
     required: false,
-    default: "ne"
+    default: "ne",
   },
-  allergyChoice: {  //Da li je alergican na neku namirnicu
+  allergyChoice: {
+    //Da li je alergican na neku namirnicu
     type: String,
     required: false,
-    default: "no"
+    default: "no",
   },
   bmi: {
     type: Number,
     required: false,
-    default: ""
+    default: "",
   },
   motiv: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   nivoAkt: {
     type: String,
     required: false,
-    default: "1.2"
+    default: "1.2",
   },
   vrstaFiz: {
     type: [String],
@@ -250,86 +216,91 @@ const userSchema = new mongoose.Schema({
   struk: {
     type: String,
     required: false,
-    default: "" 
+    default: "",
   },
   kuk: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   vrat: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   krv: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   alerg: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   pus: {
     type: String,
     required: false,
-    default: "ne"
+    default: "ne",
   },
   kolicinaCigara: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   alk: {
     type: String,
     required: false,
-    default: "ne"
+    default: "ne",
   },
   kolicina: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   vrstaAlkohola: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   bmrValue: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   ime: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   prezime: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   iskSaDijetama: {
     type: String,
     required: false,
-    default: ""
+    default: "",
   },
   intolerancija: {
     type: [String],
     required: false,
   },
-  myFile: { //Slika profila
+  myFile: {
+    //Slika profila
     type: String,
     required: false,
   },
-  komentar: { //Komentar da veljko postavlja...
+  imageUrl: {
     type: String,
     required: false,
-  }
-
+  },
+  komentar: {
+    //Komentar da veljko postavlja... imageUrl
+    type: String,
+    required: false,
+  },
 });
 
 module.exports = mongoose.model("User", userSchema);
