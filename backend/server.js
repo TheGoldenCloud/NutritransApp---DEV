@@ -265,6 +265,115 @@ const storage = multer.diskStorage({
   },
 });
 
+// Storage za slike
+const imageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "images/");
+  },
+  filename: (req, file, cb) => {
+    const userId = req.params.id;
+    cb(null, `${userId}${path.extname(file.originalname)}`); // Ime slike je ID korisnika
+  },
+});
+
+const uploadImages = multer({ storage: imageStorage });
+
+// Endpoint za upload slike
+// app.post(
+//   "/api/users/:id/upload",
+//   uploadImages.single("image"),
+//   async (req, res) => {
+//     const userId = req.params.id;
+
+//     if (!req.file) {
+//       return res.status(400).json({ message: "Greška pri uploadu slike" });
+//     }
+
+//     const imageUrl = `/images/${userId}${path.extname(req.file.originalname)}`;
+
+//     try {
+//       // Ažuriraj URL slike u bazi
+//       const user = await User.findByIdAndUpdate(
+//         userId,
+//         { imageUrl },
+//         { new: true }
+//       );
+
+//       if (!user) {
+//         return res.status(404).json({ message: "Korisnik nije pronađen" });
+//       }
+
+//       res.json({ message: "Profilna slika uspešno postavljena", imageUrl });
+//     } catch (error) {
+//       res.status(500).json({ message: "Greška pri čuvanju slike", error });
+//     }
+//   }
+// );
+
+app.post(
+  "/api/users/:id/upload",
+  uploadImages.single("image"),
+  async (req, res) => {
+    const userId = req.params.id;
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Greška pri uploadu slike" });
+    }
+
+    const imageUrl = `/images/${userId}${path.extname(req.file.originalname)}`;
+    const imagePath = path.join(__dirname, "public", imageUrl); // Putanja do slike na serveru
+
+    try {
+      // Prvo proverite da li već postoji slika sa istim imenom
+      const user = await User.findById(userId);
+
+      if (user && user.imageUrl) {
+        const oldImagePath = path.join(__dirname, "public", user.imageUrl);
+
+        // Ako slika postoji, obrišite je
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+
+      // Ažurirajte URL slike u bazi
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { imageUrl },
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "Korisnik nije pronađen" });
+      }
+
+      res.json({ message: "Profilna slika uspešno postavljena", imageUrl });
+    } catch (error) {
+      res.status(500).json({ message: "Greška pri čuvanju slike", error });
+    }
+  }
+);
+
+// Endpoint za dohvat korisnika
+app.get("/api/users/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Korisnik nije pronađen" });
+    }
+
+    let usrImg = user.imageUrl;
+
+    res.json(usrImg);
+  } catch (error) {
+    res.status(500).json({ message: "Greška pri dohvatu korisnika", error });
+  }
+});
+
+// Endpoint za serviranje slika
+app.use("/images", express.static(path.join(__dirname, "images")));
+
 //Google
 passport.use(
   new GoogleStrategy(
@@ -355,7 +464,7 @@ passport.use(
 
           //Promeni pri produkciji na https://nutritrans.rs:5000
           // const verificationLink = `http://localhost:5000/verify-email?token=${verificationToken}`;
-          const verificationLink = `https://nutritrans.rs:5000/verify-email?token=${verificationToken}`;
+          const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}`;
 
           const transporter = nodemailer.createTransport({
             service: "gmail",
@@ -380,7 +489,7 @@ passport.use(
             //           <p style="color: #555; margin-top: 20px;">Molimo vas da ne odgovarate na ovaj email. Hvala.</p>
             //       </div>`,
             html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-                      <img src="https://nutritrans.rs:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+                      <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                       <h1 style="color: #333; font-size: 28px;">🎉 Dobrodošli na Nutri Trans! 🎉</h1>
                       <p style="color: #555; font-size: 18px;">Da biste uspešno završili registraciju, kliknite na dugme ispod da biste aktivirali svoj nalog.</p>
                       
@@ -405,7 +514,7 @@ passport.use(
                 to: profile.emails[0].value,
                 subject: "Propratne informacije",
                 html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-                      <img src="https://nutritrans.rs:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+                      <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                       <h1 style="color: #333; font-size: 28px;">📃 Uputstvo za Nutri Trans! 📃</h1>
                       <p style="color: #555; font-size: 18px;">U prilogu Vam šaljemo PDF dokument vezan za Nutri Trans aplikaciju. Molimo Vas da ga pregledate i javite nam ako imate bilo kakvih pitanja ili potrebna dodatna pojašnjenja.</p>
                       
@@ -1349,7 +1458,7 @@ app.get("/hol", async (req, res) => {
     let odgovor = holPristupResult.choices[0].message.content;
     odgovor = odgovor.replace(/[#!&*ü!_?-@**]/g, "");
 
-    console.log("odgovor:", odgovor);
+    // console.log("odgovor:", odgovor);
 
     // Provera da li su svi odeljci prisutni u odgovoru
     if (
@@ -4476,7 +4585,7 @@ app.use("/test2", async (req, res) => {
         // );
 
         //Send email
-        let link = `https://nutritrans.rs/dash/user/${foundUser._id}`;
+        let link = `${process.env.FRONTEND_URL}/dash/user/${foundUser._id}`;
 
         const transporter = nodemailer.createTransport({
           service: "gmail",
@@ -4501,7 +4610,7 @@ app.use("/test2", async (req, res) => {
           //             <p style="color: #555; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj mail, Hvala.</p>
           //         </div>`,
           html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-                  <img src="https://nutritrans.rs:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+                  <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                   <h1 style="color: #333; font-size: 28px;">🎉 Uspešno kreirana ishrana! 🎉</h1>
                   <p style="color: #555; font-size: 18px;">Vaš personalizovani plan ishrane je spreman! Možete preuzeti vaš izveštaj u PDF formatu klikom na dugme ispod.</p>
                   
@@ -5560,36 +5669,40 @@ app.get("/verify-email", async (req, res) => {
   }
 });
 
-app.post("/profilePic/:id", async (req, res) => {
-  const img = req.body.myFile; // Assuming the request sends { myFile: "base64string" }
-  const id = req.params.id;
+//Stari endpoint - hvatanje iz baze...
+// app.post("/profilePic/:id", async (req, res) => {
+//   const img = req.body.myFile; // Assuming the request sends { myFile: "base64string" }
+//   const id = req.params.id;
 
-  try {
-    const user = await User.findById(id).exec();
-    if (!user) return res.status(404).json({ message: "User not found" });
+//   try {
+//     const user = await User.findById(id).exec();
+//     if (!user) return res.status(404).json({ message: "User not found" });
 
-    user.myFile = img;
-    await user.save();
-    res.status(201).json({ msg: "New image uploaded!" });
-  } catch (error) {
-    res.status(409).json({ message: error.message });
-  }
-});
+//     user.myFile = img;
+//     await user.save();
+//     res.status(201).json({ msg: "New image uploaded!" });
+//   } catch (error) {
+//     res.status(409).json({ message: error.message });
+//   }
+// });
 
+//Stari endpoint - hvatanje iz baze...
 // GET endpoint for fetching the profile picture
-app.get("/profilePic/:id", async (req, res) => {
-  const id = req.params.id;
+// app.get("/profilePic/:id", async (req, res) => {
+//   const id = req.params.id;
 
-  try {
-    const user = await User.findById(id).exec();
-    if (!user || !user.myFile) {
-      return res.status(404).json({ message: "No profile picture found" });
-    }
-    res.status(200).json({ file: user.myFile });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+//   try {
+//     const user = await User.findById(id).exec();
+//     if (!user || !user.myFile) {
+//       return res.status(404).json({ message: "No profile picture found" });
+//     }
+//     res.status(200).json({ file: user.myFile });
+//   } catch (error) {
+//     res.status(500).json({ message: error.message });
+//   }
+// });
+
+//Smestanje na serveru
 
 //Poslenje kreiran public blog
 app.get("/blogNew", async (req, res) => {
@@ -5686,7 +5799,7 @@ app.post("/reTokenizer", async (req, res) => {
       expiresIn: "1h",
     });
 
-    const verificationLink = `https://nutritrans.rs:5000/verify-email?token=${verificationToken}`;
+    const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}`;
     // const verificationLink = `http://localhost:5000/verify-email?token=${verificationToken}`;
 
     // const transporter = nodemailer.createTransport({
@@ -5723,7 +5836,7 @@ app.post("/reTokenizer", async (req, res) => {
       //         <p style="color: #555; margin-top: 20px;">Ako niste poslali zahtev za resetovanje šifre onda ignorišite ovaj mail.</p>
       //       </div>`,
       html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-                <img src="https://nutritrans.rs:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+                <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                 <h1 style="color: #333; font-size: 28px;">🔒 Zahtev za aktivaciju profila 🔒</h1>
                 <p style="color: #555; font-size: 18px;">Dobili smo zahtev za resetovanje Vaše šifre. Kliknite na dugme ispod da biste je resetovali.</p>
                 
@@ -6677,13 +6790,13 @@ app.post("/generate-payment-form", async (req, res) => {
       .map(() => ((Math.random() * 36) | 0).toString(36))
       .join("");
 
-    const clientId = "13IN003415";
+    const clientId = process.env.MERCHENT_ID;
     const oid = orderId || "";
     const aAmount = amount || "";
     const trantype = "Auth";
     const rnd = randomString;
     const currency = "941";
-    const storeKey = "Nutritrans01";
+    const storeKey = process.env.STORE_KEY;
     const storeType = "3d_pay_hosting";
     const lang = "sr";
     const hashAlgorithm = "ver2";
@@ -7238,7 +7351,9 @@ app.post("/bankaSuccess", async (req, res) => {
             <p>S poštovanjem,</p>
             <p>Tim NutriTrans</p>
             <div class="footer">
-                <a href="https://nutritrans.rs/dash" class="button">Povratak na početnu stranicu</a>
+                <a href="${
+                  process.env.FRONTEND_URL
+                }/dash" class="button">Povratak na početnu stranicu</a>
             </div>
         </div>
     </body>
@@ -7721,7 +7836,9 @@ app.post("/bankaFail", async (req, res) => {
         <p>S poštovanjem,</p>
         <p>Tim NutriTrans</p>
         <div class="footer">
-            <a href="https://nutritrans.rs/dash" class="button">Povratak na početnu stranicu</a>
+            <a href="${
+              process.env.FRONTEND_URL
+            }/dash" class="button">Povratak na početnu stranicu</a>
         </div>
     </div>
 </body>
@@ -8949,30 +9066,37 @@ let add = async () => {
 
 //==== TESTS ====
 
-const sslOptions = {
-  key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"), // Path to your private key
-  cert: fs.readFileSync(
-    "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
-  ), // Path to your certificate
-};
+//DEV
+// const sslOptions = {
+//   key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"), // Path to your private key
+//   cert: fs.readFileSync(
+//     "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
+//   ),
+// };
+
+//PRODUCTION
+// const sslOptions = {
+//   key: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/privkey.pem"), // Path to your private key
+//   cert: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/fullchain.pem"), // Path to your certificate
+// };
 
 //SA HTTPS
-mongoose.connection.once("open", () => {
-  console.log("Connected to MongoDB!");
-  // Start HTTPS server
-  https.createServer(sslOptions, app).listen(PORT, () => {
-    console.log(`HTTPS server running on port ${PORT}`);
-  });
-});
-
-//BEZ HTTPS
 // mongoose.connection.once("open", () => {
-//   console.log("Connected to MongoDB");
-//   app.listen(PORT, () => {
-//     console.log(`Server running on port ${PORT}`);
-//     // add();
+//   console.log("Connected to MongoDB!");
+//   // Start HTTPS server
+//   https.createServer(sslOptions, app).listen(PORT, () => {
+//     console.log(`HTTPS server running on port ${PORT}`);
 //   });
 // });
+
+//BEZ HTTPS
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    // add();
+  });
+});
 
 mongoose.connection.on("error", (err) => {
   console.log(err);
