@@ -50,7 +50,7 @@ const login = async (req, res) => {
     { expiresIn: "7d" }
   );
 
-  //Svaki put kad se neko uloguje onda se proverava da li postoji neki patek sa Datum placanja = null ili "Pending"
+  //Svaki put kad se neko uloguje onda se proverava da li postoji neki paket sa Datum placanja = null ili "Pending"
   //da bi ocistili bazi
   Paket.deleteMany({ status_placanja: "Pending" })
     .then((result) => {
@@ -59,6 +59,19 @@ const login = async (req, res) => {
     .catch((err) => {
       console.error("Greška pri brisanju paketa:", err);
     });
+
+  //Azurira sve pakete koji su istekli
+  const today = new Date();
+  const paketi = await Paket.find({ idUser: foundUser._id }); //tip: "Godišnje"
+  const updatedPaketi = await Promise.all(
+    paketi.map(async (paket) => {
+      if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
+        paket.status = "Neaktivan";
+        await paket.save();
+      }
+      return paket;
+    })
+  );
 
   res.cookie("jwt", refreshToken, {
     httpOnly: true, //accessible only by web server

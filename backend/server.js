@@ -478,7 +478,6 @@ passport.use(
           });
 
           const mailOptions = {
-            //work here
             from: "office@nutritrans.com",
             to: profile.emails[0].value,
             subject: "Registracija profila",
@@ -794,31 +793,51 @@ app.delete("/delete-file/:id", async (req, res) => {
 //   } catch (error) {}
 // });
 
-//Azurira
+//Azurira - work here
 app.get("/get-pakete/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const today = new Date();
-    const paketi = await Paket.find({ idUser: id }); //tip: "Godišnje"
+    // const today = new Date();
+    // const paketi = await Paket.find({ idUser: id }); //tip: "Godišnje"
 
     // Proveri i ažuriraj pakete
-    const updatedPaketi = await Promise.all(
-      paketi.map(async (paket) => {
-        if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
-          paket.status = "Neaktivan";
-          await paket.save();
-        }
-        return paket;
-      })
-    );
+    // const updatedPaketi = await Promise.all(
+    //   paketi.map(async (paket) => {
+    //     if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
+    //       paket.status = "Neaktivan";
+    //       await paket.save();
+    //     }
+    //     return paket;
+    //   })
+    // );
 
-    res.send({ status: "ok", data: updatedPaketi });
+    const paket = await Paket.findOne({
+      idUser: id,
+      status: "Aktivan",
+    })
+      .sort({ datum_kreiranja: -1 })
+      .exec();
+
+    res.send({ status: "ok", data: paket });
   } catch (error) {
     console.error("Error ne mogu da se fetuju paketi:", error);
     res.status(500).send({ status: "error", message: "Server error" });
   }
 });
+
+//Azurira sve pakete koji su istekli
+// const today = new Date();
+// const paketi = await Paket.find({ idUser: id }); //tip: "Godišnje"
+// const updatedPaketi = await Promise.all(
+//   paketi.map(async (paket) => {
+//     if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
+//       paket.status = "Neaktivan";
+//       await paket.save();
+//     }
+//     return paket;
+//   })
+// );
 
 //Samo sa statusom neaktivan
 // app.get("/get-pakete/:id", async (req, res) => {
@@ -6790,13 +6809,13 @@ app.post("/generate-payment-form", async (req, res) => {
       .map(() => ((Math.random() * 36) | 0).toString(36))
       .join("");
 
-    const clientId = process.env.MERCHENT_ID;
+    const clientId = "13IN003415";
     const oid = orderId || "";
     const aAmount = amount || "";
     const trantype = "Auth";
     const rnd = randomString;
     const currency = "941";
-    const storeKey = process.env.STORE_KEY;
+    const storeKey = "Nutritrans01";
     const storeType = "3d_pay_hosting";
     const lang = "sr";
     const hashAlgorithm = "ver2";
