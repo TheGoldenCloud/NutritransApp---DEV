@@ -24,6 +24,7 @@ const pdfService = require("./pdf-service");
 const OpenAI = require("openai");
 // const { PromptTemplate } = require("@langchain/core");
 const { z } = require("zod");
+const cron = require("node-cron");
 const { zodFunction, zodResponseFormat } = require("openai/helpers/zod");
 const PDFDocument = require("pdfkit");
 const nodemailer = require("nodemailer");
@@ -35,6 +36,7 @@ const Ciljevi = require("./models/Ciljevi");
 const ChatKonverzacija = require("./models/ChatKonverzacija");
 const Namirnice = require("./models/Namirnice");
 const Blog = require("./models/Blog");
+const Kod = require("./models/Kod");
 
 const ejs = require("ejs");
 const passport = require("passport");
@@ -432,7 +434,7 @@ passport.use(
             valuta: "RSD",
             status_placanja: "Plaćeno",
             status: "Aktivan",
-            tip: "",
+            tip: "Jednokratno",
             broj: {
               full: "1",
               base: "0",
@@ -793,7 +795,7 @@ app.delete("/delete-file/:id", async (req, res) => {
 //   } catch (error) {}
 // });
 
-//Azurira - work here
+//Azurira
 app.get("/get-pakete/:id", async (req, res) => {
   const { id } = req.params;
 
@@ -820,6 +822,20 @@ app.get("/get-pakete/:id", async (req, res) => {
       .exec();
 
     res.send({ status: "ok", data: paket });
+  } catch (error) {
+    console.error("Error ne mogu da se fetuju paketi:", error);
+    res.status(500).send({ status: "error", message: "Server error" });
+  }
+});
+
+app.get("/get-pakete-sve/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const today = new Date();
+    const paketi = await Paket.find({ idUser: id }); //tip: "Godišnje"
+
+    res.send({ status: "ok", data: paketi });
   } catch (error) {
     console.error("Error ne mogu da se fetuju paketi:", error);
     res.status(500).send({ status: "error", message: "Server error" });
@@ -886,6 +902,7 @@ app.post("/add-paket", async (req, res) => {
       datum_kreiranja: new Date(),
       datum_isteka: datumIsteka,
       datum_placanja: new Date(),
+
       idUser,
       transakcioni_id: "",
       metoda_placanja: "",
@@ -979,6 +996,7 @@ app.use("/prompts", require("./routes/promptRoutes"));
 app.use("/chatKonv", require("./routes/chatKonvRoutes"));
 app.use("/blog", require("./routes/blogRoutes"));
 app.use("/tag", require("./routes/tagRoutes"));
+app.use("/kod", require("./routes/kodRoutes"));
 
 //AI
 const client = new OpenAI({
@@ -1343,7 +1361,7 @@ app.use("/op", async (req, res) => {
   let content = description.choices[0].message.content;
   content = content.replace(/[#!&*ü!_?-]/g, ""); //Ovde sam dodao -
 
-  console.log("DATA:", content);
+  // console.log("DATA:", content);
   // Main meal plan schema
   const mealPlan = {
     naslov: "",
@@ -3014,6 +3032,25 @@ app.get("/dani", async (req, res) => {
 app.use("/test2", async (req, res) => {
   let { brojDana, obroci, data_ } = req.body;
 
+  //Trazimo sve nmirnice
+  let sveNaminice = await Namirnice.find({}).lean();
+  let foundUser = await User.findOne({ mail: data_.mail }).exec();
+
+  if (!foundUser) {
+    return res.status(401).json({ message: "Korisnik nije nadjen" });
+  }
+
+  //Naminice koje ne ulaze u odabir
+  const nam = foundUser.namirnice;
+
+  //Prebacujemo imena iz idOva neodabranih naminica
+  const NeodabraneNamirniceUsera = nam.map((id) => {
+    const namirnica = sveNaminice.find((n) => n._id.equals(id));
+    return namirnica ? namirnica.naziv : null;
+  });
+
+  //work here
+
   let stanjeImun = data_.imunitet === "Da" ? "jak imunitet" : "slab imunitet";
 
   //Prebacujemo id u imena specificnim ciljevima
@@ -3275,7 +3312,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: zakljucakPredprompt,
+          content: uvodPredpromptNew, //zakljucakPredprompt => Veljko je trazio da svuda bude isti predprompt
         },
         {
           role: "user",
@@ -3303,7 +3340,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: smernicePredprompt,
+          content: uvodPredpromptNew, //smernicePredprompt => Veljko je trazio da svuda bude isti predprompt
         },
         {
           role: "user",
@@ -3332,7 +3369,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: fizAktPredprompt,
+          content: uvodPredpromptNew, //fizAktPredprompt => Veljko je trazio da svuda bude isti predprompt
           // content: `Ti si veštačka inteligencija koja nudi personalizovan plan fizičke aktivnosti. Pružaj detaljna objašnjenja za ${data_.ime} ${data_.prezime} koji ima ${data_.tezina} kg i visok je ${data_.visina} cm, obim struka mu je ${data_.struk} cm, sa odabranim fizičkim aktivnostima ${data_.vrstaFiz}. Motivacija za potrebu fizičkih aktivnosti uključuje ${data_.motiv}, a ima dijagnozu ${data_.dijagnoza}.`
         },
         {
@@ -3417,7 +3454,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: imunPredprompt,
+          content: uvodPredpromptNew, //imunPredprompt => Veljko je trazio da svuda bude isti predprompt
           // content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o imunitetu. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime} može poboljšati svoj imunitet, imajući u vidu da ima ${vrstaImuniteta} i motivaciju za promenu: ${data_.motiv}. Njegovi specificni ciljevi su ${data_.specilj}`
         },
         {
@@ -3490,7 +3527,7 @@ app.use("/test2", async (req, res) => {
         {
           role: "system",
           //Upotpuni ovo podacima
-          content: perosnalPredpromptNew,
+          content: uvodPredpromptNew, //perosnalPredpromptNew => Veljko je trazio da svuda bude isti predprompt
         },
         {
           role: "user",
@@ -3558,7 +3595,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: spavanjePredprompt,
+          content: uvodPredpromptNew, //spavanjePredprompt => Veljko je trazio da svuda bude isti predprompt
           // content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o snu. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime} može poboljšati svoj san, imajući u vidu da ima nivo fizičke aktivnosti ${data_.ddd}. A ima specifične ciljeve ${data_.specilj} i navike u ishrani ${data_.navikeUish}.`
         },
         {
@@ -3593,7 +3630,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: vodaPredpromt,
+          content: uvodPredpromptNew, //vodaPredpromt => Veljko je trazio da svuda bude isti predprompt
         },
         {
           role: "user",
@@ -3662,7 +3699,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: prethishPredprompt,
+          content: uvodPredpromptNew, //prethishPredprompt => Veljko je trazio da svuda bude isti predprompt
           //content: `Ti si veštačka inteligencija koja nudi preporuke o prethodnim iskustvima sa dijetama. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime}, sa ciljevima ${data_.primcilj}, i specifičnim ciljem ${data_.specilj} i motivacijom za ${data_.motiv} sa prethosnim iskustom ${data_.iskSaDijetama}.`
         },
         {
@@ -3784,6 +3821,7 @@ app.use("/test2", async (req, res) => {
     //Ovaj deo je bio u daniPredprompt_ na kraju recenice
     //- Makronutrijenti moraju biti u gramima a ne u procentima!
 
+    // work here
     let daniPrmpt_ = `
         Napravi plan ishrane (${
           data_.selectedIshranaNaziv
@@ -3794,6 +3832,8 @@ app.use("/test2", async (req, res) => {
         )} kcal po danu.
         - Preferirane namirnice: ${data_.voljeneNamirnice}.
         - Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+        - Iz izhrane izbaciti namirnice: ${NeodabraneNamirniceUsera}, kao i proizvode napravljene od tih namirnica.
+        
 
         Raspodela kalorija među obrocima treba da prati sledeća pravila:
         - Doručak: 25-30% kalorija
@@ -3801,6 +3841,8 @@ app.use("/test2", async (req, res) => {
         - Večera: 25-30% kalorija
         
         Minimalna tolerancija odstupanja u kalorijama je ±2%.
+
+        - Svi odgovori moraju biti napisani isključivo na čistom srpskom jeziku, uz pravilnu upotrebu gramatike i padeža. Izbegavaj bilo kakve dijalekte, regionalizme, jekavicu ili ekavicu – koristi standardni srpski književni jezik. Posebno obrati pažnju na tačnu upotrebu padeža (npr. 'Majo' umesto 'Maja' u vokativu). Tekst treba biti gramatički i pravopisno ispravan, prirodan i lako razumljiv.
       `;
 
     //Ovaj deo je bio u daniPrmpt_ na kraju recenice
@@ -3842,7 +3884,7 @@ app.use("/test2", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: alkoholpPredprompt,
+            content: uvodPredpromptNew, //alkoholpPredprompt => Veljko je trazio da svuda bude isti predprompt
           },
           {
             role: "user",
@@ -3874,7 +3916,7 @@ app.use("/test2", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: pusenjePredprompt,
+            content: uvodPredpromptNew, //pusenjePredprompt => Veljko je trazio da svuda bude isti predprompt
           },
           {
             role: "user",
@@ -3899,7 +3941,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: alergijePredprompt,
+          content: uvodPredpromptNew, //alergijePredprompt => Veljko je trazio da svuda bude isti predprompt
         },
         {
           role: "user",
@@ -3961,7 +4003,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: holistickiPristupPredpromtNew,
+          content: uvodPredpromptNew, //holistickiPristupPredpromtNew => Veljko je trazio da svuda bude isti predprompt
         },
         {
           //Promeni
@@ -4538,38 +4580,38 @@ app.use("/test2", async (req, res) => {
             uvod: promptUvod,
 
             // predHolistickiPristup: holistickiPristupPredpromt,
-            predHolistickiPristup: holistickiPristupPredpromtNew,
+            predHolistickiPristup: uvodPredpromptNew, // holistickiPristupPredpromtNew,
             holistickiPristup: promptHolistickiPristup,
 
             // predPlanIshrane: perosnalPredprompt,
-            predPlanIshrane: perosnalPredpromptNew,
+            predPlanIshrane: uvodPredpromptNew, //perosnalPredpromptNew
             planIshrane: promptPersonal,
 
             predDani: daniPredprompt_,
             dani: daniPrmpt_,
 
-            predSmernice: smernicePredprompt,
+            predSmernice: uvodPredpromptNew, //smernicePredprompt
             smernice: promptSmernice,
 
-            predPlanFizickeAktivnosti: fizAktPredprompt,
+            predPlanFizickeAktivnosti: uvodPredpromptNew, //fizAktPredprompt
             planFizickeAktivnosti: fizAktPromt,
 
-            predPodrskaZaImunitet: imunPredprompt,
+            predPodrskaZaImunitet: uvodPredpromptNew, //imunPredprompt
             podrskaZaImunitet: imunPrompt,
 
-            predSpavanjeSavet: spavanjePredprompt,
+            predSpavanjeSavet: uvodPredpromptNew, //spavanjePredprompt
             spavanjeSavet: promptSpavanje,
 
-            predUnosVode: vodaPredpromt,
+            predUnosVode: uvodPredpromptNew, //vodaPredpromt
             unosVode: promptVoda,
 
-            predPusenje: pusenjePredprompt,
+            predPusenje: uvodPredpromptNew, // pusenjePredprompt
             pusenje: promptPusenje,
 
-            predAlkohol: alkoholpPredprompt,
+            predAlkohol: uvodPredpromptNew, //alkoholpPredprompt
             alkohol: promptAlkohol,
 
-            predZakljucak: zakljucakPredprompt,
+            predZakljucak: uvodPredpromptNew, //zakljucakPredprompt
             zakljucak: promptZakljucak,
           },
           odgovor: {
@@ -4587,12 +4629,6 @@ app.use("/test2", async (req, res) => {
             zakljucak: mydata.odgovor.zakljucak,
           },
         });
-
-        let foundUser = await User.findOne({ mail: data_.mail }).exec();
-
-        if (!foundUser) {
-          return res.status(401).json({ message: "Korisnik nije nadjen" });
-        }
 
         // const secret = process.env.JWT_SECRET + foundUser.password;
         // const token = jwt.sign(
@@ -5521,6 +5557,61 @@ app.patch("/updateNaminice", async (req, res) => {
   }
 });
 
+//Kada se promeni neka naminica - work here
+app.post("/updateNaminiceNaChekbox", async (req, res) => {
+  const { id, odabraneNamirnice } = req.body;
+
+  if (!id || !Array.isArray(odabraneNamirnice)) {
+    return res.status(400).json({ message: "Invalid input" });
+  }
+
+  try {
+    const namirnice = await Namirnice.find({}).select("_id");
+    const user = await User.findById(id).exec();
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const sveNaminice = namirnice.map((namirnica) => namirnica._id.toString());
+    const razlika = sveNaminice.filter((id) => !odabraneNamirnice.includes(id));
+
+    user.namirnice = razlika;
+    user.namirniceDa = odabraneNamirnice;
+
+    await user.save();
+
+    res.json({
+      message: `Namirnice updejtovane`,
+      updatedUser: user,
+    });
+  } catch (error) {
+    console.error("Error updating user: ", error);
+    res.status(500).json({ message: "Error updating user", error });
+  }
+});
+
+//work here
+app.get("/checkNaminice", async (req, res) => {
+  try {
+    let sveNaminice = await Namirnice.find({}).lean();
+    const user = await User.findById("66e2ed73fdadd6048da0acec").exec();
+    const nam = user.namirnice;
+
+    const novaLista = nam.map((id) => {
+      const namirnica = sveNaminice.find((n) => n._id.equals(id));
+      return namirnica ? namirnica.naziv : null;
+    });
+
+    console.log("sveNaminice => ", sveNaminice);
+
+    res.json({ novaLista, nam });
+  } catch (error) {
+    console.error("Error updating user: ", error);
+    res.status(500).json({ message: "Error updating user", error });
+  }
+});
+
 //Kada se promeni neka naminica - ODRADI
 // app.patch("/updateNaminice/jedna", async (req, res) => {
 //   const { id, namirnice, namirniceDa, selectedIshranaNaziv, selectedIshrana } =
@@ -5624,8 +5715,17 @@ app.get("/getUserData/:id", async (req, res) => {
 // });
 
 app.post("/initalUpdate/:id", async (req, res) => {
-  const { id, name, lastname, datumRodjenja, pol, tezina, visina, wellcome } =
-    req.body;
+  const {
+    id,
+    name,
+    lastname,
+    datumRodjenja,
+    pol,
+    tezina,
+    visina,
+    wellcome,
+    datumRegistracije,
+  } = req.body;
 
   try {
     const user = await User.findById(id).exec();
@@ -5639,6 +5739,7 @@ app.post("/initalUpdate/:id", async (req, res) => {
     user.visina = visina || user.visina;
     user.tezina = tezina || user.tezina;
     user.wellcome = wellcome || user.wellcome;
+    user.datumRegistracije = datumRegistracije;
 
     // Spremanje korisnika u bazu
     const updatedUser = await user.save();
@@ -5656,6 +5757,7 @@ app.post("/initalUpdate/:id", async (req, res) => {
   }
 });
 
+//New verification
 app.get("/verify-email", async (req, res) => {
   const { token } = req.query;
 
@@ -5666,12 +5768,16 @@ app.get("/verify-email", async (req, res) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Find the user by userId (decoded from the token)
+    // Pronađi korisnika po ID-ju
     const user = await User.findById(decoded.userId);
-    console.log("User found for verification => ", user);
 
     if (!user) {
       return res.render("korisnikNijePronadjen");
+    }
+
+    // Proveri da li je token još uvek validan
+    if (user.currentToken !== token) {
+      return res.render("verificationFail"); // Neuspešna verifikacija – token više nije validan
     }
 
     if (user.isVerified) {
@@ -5679,6 +5785,8 @@ app.get("/verify-email", async (req, res) => {
     }
 
     user.isVerified = true;
+    // Opciono: očisti currentToken nakon verifikacije
+    user.currentToken = null;
     await user.save();
 
     return res.render("verificationSuccess");
@@ -5687,6 +5795,39 @@ app.get("/verify-email", async (req, res) => {
     return res.render("verificationFail");
   }
 });
+
+// Old verification
+// app.get("/verify-email", async (req, res) => {
+//   const { token } = req.query;
+
+//   if (!token) {
+//     return res.status(400).json({ message: "Token nije pronađen." });
+//   }
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+//     // Find the user by userId (decoded from the token)
+//     const user = await User.findById(decoded.userId);
+//     // console.log("User found for verification => ", user);
+
+//     if (!user) {
+//       return res.render("korisnikNijePronadjen");
+//     }
+
+//     if (user.isVerified) {
+//       return res.render("vecVerifikovan");
+//     }
+
+//     user.isVerified = true;
+//     await user.save();
+
+//     return res.render("verificationSuccess");
+//   } catch (err) {
+//     console.error(err);
+//     return res.render("verificationFail");
+//   }
+// });
 
 //Stari endpoint - hvatanje iz baze...
 // app.post("/profilePic/:id", async (req, res) => {
@@ -5814,9 +5955,17 @@ app.post("/reTokenizer", async (req, res) => {
   const { mail, id } = req.body;
 
   try {
+    const user = await User.findById(id).exec();
+    if (!user) {
+      return res.status(404).json({ message: "Korisnik nije pronađen" });
+    }
+
     const verificationToken = jwt.sign({ userId: id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
+
+    user.currentToken = verificationToken;
+    await user.save();
 
     const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}`;
     // const verificationLink = `http://localhost:5000/verify-email?token=${verificationToken}`;
@@ -5847,7 +5996,7 @@ app.post("/reTokenizer", async (req, res) => {
     const mailOptions = {
       from: "office@nutritrans.com",
       to: mail,
-      subject: "Registracija profila",
+      subject: "Ponovna verifikacija profila",
       // html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
       //         <h1 style="color: #333;">Zahtev za aktivaciju profila</h1>
       //         <p style="color: #555;">Dobili smo zahtrev za resetovanje Vase šifre, kliknite dole da bi ste je resetovali</p>
@@ -5856,14 +6005,14 @@ app.post("/reTokenizer", async (req, res) => {
       //       </div>`,
       html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
                 <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
-                <h1 style="color: #333; font-size: 28px;">🔒 Zahtev za aktivaciju profila 🔒</h1>
-                <p style="color: #555; font-size: 18px;">Dobili smo zahtev za resetovanje Vaše šifre. Kliknite na dugme ispod da biste je resetovali.</p>
+                <h1 style="color: #333; font-size: 28px;">🎉 Dobrodošli na Nutri Trans! 🎉</h1>
+                <p style="color: #555; font-size: 18px;">Da biste uspešno završili registraciju, kliknite na dugme ispod da biste aktivirali svoj nalog.</p>
                 
-                <a href="${verificationLink}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 14px 28px; font-size: 18px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px;">🔑 Resetuj lozinku</a>
+                <a href="${verificationLink}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 14px 28px; font-size: 18px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px;">✅ Aktivirajte svoj nalog</a>
                 
-                <p style="color: #777; font-size: 14px; margin-top: 30px;">Ako niste poslali zahtev za resetovanje šifre, slobodno ignorišite ovaj email.</p>
+                <p style="color: #777; font-size: 14px; margin-top: 30px;">Ako niste kreirali ovaj nalog, slobodno ignorišite ovaj email.</p>
                 
-                <p style="color: #999; font-size: 12px; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj email. Hvala na poverenju! 🔐</p>
+                <p style="color: #999; font-size: 12px; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj email. Hvala na poverenju! 🚀</p>
             </div>
             `,
     };
@@ -6600,7 +6749,7 @@ function updateDate(duration) {
 //                   <p>Tim NutriTrans</p>
 
 //                   <div class="footer">
-//                     <p>NutriTrans - Vaš partner za zdravlja</p>
+//                     <p>NutriTrans - Vaš partner za zdravlje</p>
 //                   </div>
 //                 </div>
 
@@ -6796,7 +6945,7 @@ app.post("/generate-payment-form", async (req, res) => {
   try {
     const { id, email, orderId, amount, okUrl, failUrl, paketId, duration } =
       req.body;
-    // console.log("Email => ", email);
+    console.log("response => ", req.body);
 
     const foundUser = await User.findById(id);
 
@@ -6842,7 +6991,8 @@ app.post("/generate-payment-form", async (req, res) => {
       .digest("hex");
     const hash = Buffer.from(hashValue, "hex").toString("base64");
 
-    const payURL = "https://testsecurepay.eway2pay.com/fim/est3Dgate";
+    // const payURL = "https://testsecurepay.eway2pay.com/fim/est3Dgate";
+    const payURL = process.env.BANCA_API;
 
     let noviPaket = null;
     if (foundUser) {
@@ -6854,8 +7004,8 @@ app.post("/generate-payment-form", async (req, res) => {
         valuta: "RSD",
         status: "Neaktivan",
         broj: {
-          full: orderId.split("-")[0] === "Standard" ? 1 : 5,
-          base: orderId.split("-")[0] === "Standard" ? 4 : 0,
+          full: orderId.split("-")[0] === "Napredni" ? 20 : 8, //Testiraj
+          base: orderId.split("-")[0] === "Napredni" ? 4 : 0,
         },
         status_placanja: "Pending",
         datum_kreiranja: new Date(),
@@ -7146,7 +7296,7 @@ app.post("/bankaSuccess", async (req, res) => {
                 <p>Tim NutriTrans</p>
 
                 <div class="footer">
-                  <p>NutriTrans - Vaš partner za zdravlja</p>
+                  <p>NutriTrans - Vaš partner za zdravlje</p>
                 </div>
               </div>
 
@@ -7378,6 +7528,27 @@ app.post("/bankaSuccess", async (req, res) => {
     </body>
     </html>
     `;
+
+    //Update promokod work here
+    // console.log("User Id iz paketa => ", updatedPaket.idUser);
+    // let kod = await Kod.findOne({ idUser: updatedPaket.idUser });
+    // if (kod) {
+    //   if (updatedPaket.idUser && !kod.idUser.includes(updatedPaket.idUser)) {
+    //     kod.idUser.push(updatedPaket.idUser);
+    //     await kod.save();
+    //   }
+    // }
+
+    let idToMove = updatedPaket.idUser;
+    console.log("idToMove => ", idToMove);
+
+    let result = await Kod.updateOne(
+      { idUserTreba: idToMove },
+      {
+        $pull: { idUserTreba: idToMove },
+        $push: { idUser: idToMove },
+      }
+    );
 
     res.send(htmlContent_);
   } catch (error) {
@@ -8421,11 +8592,14 @@ app.post("/bankaFail", async (req, res) => {
 //   }
 // });
 
-//Testni - RADI
+//Otkazivanje paketa
 app.post("/proxy", async (req, res) => {
-  const url = "https://testsecurepay.eway2pay.com/fim/api";
+  // const url = "https://testsecurepay.eway2pay.com/fim/api";
+  const url = process.env.BANCA_API_CANCEL;
   const xmlData = req.body.data;
   const { id: userid, tranId: trans, email } = req.body.user;
+
+  // console.log("Proxy: ", req.body);
 
   try {
     // Prvo šaljemo zahtev ka API-ju
@@ -8451,7 +8625,7 @@ app.post("/proxy", async (req, res) => {
       );
 
       if (result) {
-        console.log("Record updated:", result);
+        // console.log("Record updated:", result);
 
         // Kreiranje transportera za slanje email-a
         const transporter = nodemailer.createTransport({
@@ -8552,7 +8726,7 @@ app.post("/proxy", async (req, res) => {
                     </div>
                     <div class="footer">
                         <p>Hvala što koristite naše usluge.</p>
-                        <p>Tim Vaše Kompanije</p>
+                        <p>Tim NutriTrans</p>
                     </div>
                 </div>
             </body>
@@ -8580,6 +8754,121 @@ app.post("/proxy", async (req, res) => {
     const text = await response.text();
     res.status(response.status).send(text);
   } catch (error) {
+    // Kad nastane greska onda salji mail!
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: "office@nutritrans.com",
+        pass: "jezq ddqo aynu qucx",
+      },
+    });
+
+    // Kreiranje email poruke
+    const mailOptions = {
+      from: "office@nutritrans.com",
+      to: email,
+      subject: "Otkazivanje paketa",
+      html: `
+                <!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greška u otkazivanju paketa</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            color: #dc3545; /* Crvena boja za greške */
+        }
+        .content {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #777;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #f8d7da; /* Svetlo crvena za greške */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Greška u otkazivanju paketa</h1>
+        </div>
+        <div class="content">
+            <p>Poštovani,</p>
+            <p>Nažalost, došlo je do greške prilikom pokušaja otkazivanja Vašeg paketa. Pokušajte ponovo ili se obratite našoj korisničkoj podršci za dodatne informacije.</p>
+            
+            <p>Detalji greške:</p>
+            <table>
+                <tr>
+                    <th>Transakcioni ID</th>
+                    <td>${trans}</td>
+                </tr>
+                <tr>
+                    <th>Datum plaćanja</th>
+                    <td>${new Date(result.datum_placanja).toLocaleString()}</td>
+                </tr>
+                <tr>
+                    <th>Datum pokušaja otkazivanja</th>
+                    <td>${new Date().toLocaleString()}</td>
+                </tr>
+            </table>
+        </div>
+        <div class="footer">
+            <p>Žao nam je zbog ove neprijatnosti. Kontaktirajte nas za pomoć na office@nutritrans</p>
+            <p>Tim NutriTrans</p>
+        </div>
+    </div>
+</body>
+</html>
+
+              `,
+    };
+
+    // Slanje email-a
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Greška prilikom slanja emaila:", error);
+        return res.status(400).json({ message: "Nije uspelo slanje email-a" });
+      } else {
+        console.log("Email poslat:", info.response);
+      }
+    });
+
     console.error("Greška u API pozivu:", error);
     res.status(500).send({ error: error.message });
   }
@@ -8755,6 +9044,10 @@ app.patch("/specCilj/reset/:id", async (req, res) => {
 app.patch("/specCilj/:id", async (req, res) => {
   const id = req.params.id;
   const updatedData = req.body; // Lista ID-ova odabranih ciljeva
+
+  // if (updatedData.length === 0 || updatedData[0].startsWith("function")) {
+  //   return res.status(400).json({ message: "Vracen prazazna lista!" });
+  // }
 
   if (!Array.isArray(updatedData)) {
     return res.status(400).json({ message: "Nevalidni podaci za ažuriranje" });
@@ -9031,6 +9324,9 @@ app.get("/about", (req, res) => {
   res.json({ message: "Server up!" });
 });
 
+//==== KODOVI ====
+//
+
 //
 app.all("*", (req, res) => {
   res.status(404);
@@ -9083,11 +9379,814 @@ let add = async () => {
 
 // })
 
-//==== TESTS ====
+//==== CRONS ====
+
+//Svakog prvog u mesecu se obnove jelovnici
+cron.schedule("0 2 1 * *", async () => {
+  const today = new Date();
+
+  if (today.getDate() === 1) {
+    try {
+      await Paket.updateMany({ status: "Aktivan" }, [
+        {
+          $set: {
+            "broj.full": {
+              $cond: {
+                if: { $eq: ["$naziv_paketa", "Napredni"] },
+                then: 20,
+                else: {
+                  $cond: {
+                    if: { $eq: ["$naziv_paketa", "Osnovni"] },
+                    then: 8,
+                    else: "$broj.full",
+                  },
+                },
+              },
+            },
+          },
+        },
+      ]);
+      console.log("Cron job: Jelovnici updejtovani!");
+    } catch (error) {
+      console.error("Cron job: Greška pri updejtovanju jelovnika:", error);
+    }
+  }
+});
+
+//Svaki dan u 3h se updejtuje status paketa
+cron.schedule("0 3 * * *", async () => {
+  try {
+    const today = new Date();
+    const paketi = await Paket.find({ tip: "Godišnje" });
+
+    const updatedPaketi = await Promise.all(
+      paketi.map(async (paket) => {
+        if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
+          paket.status = "Neaktivan";
+          paket.datum_otkazivanja = new Date();
+          await paket.save();
+        }
+        return paket;
+      })
+    );
+
+    console.log("Cron job: Statusi paketa updejtovani");
+  } catch (error) {
+    console.error("Cron job: Error updating paketi status:", error);
+  }
+});
+
+//CRON ZA MAILOVE
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "office@nutritrans.com",
+    pass: "jezq ddqo aynu qucx",
+  },
+});
+
+//Mail 1 za slanje korisniku koji sa prvim Starter paketom - Sutradan kad se prvi put prijavi
+cron.schedule("0 9 * * *", async () => {
+  console.log(`[CRON] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+
+  try {
+    // Pronađi sve aktivne pakete
+    const aktivniPaketi = await Paket.find({ status: "Aktivan" });
+
+    // Grupisanje po korisniku
+    const korisnikPaketiMap = new Map();
+
+    for (const paket of aktivniPaketi) {
+      if (!korisnikPaketiMap.has(paket.idUser)) {
+        korisnikPaketiMap.set(paket.idUser, []);
+      }
+      korisnikPaketiMap.get(paket.idUser).push(paket);
+    }
+
+    // Obrada korisnika
+    for (const [idUser, paketi] of korisnikPaketiMap.entries()) {
+      if (paketi.length === 1 && paketi[0].naziv_paketa === "Starter") {
+        const user = await User.findById(idUser);
+
+        if (user && user.wellcome === "1" && user.isVerified === true) {
+          await transporter.sendMail({
+            from: "office@nutritrans.com",
+            to: user.mail,
+            subject: "Dobrodošli!",
+            html: `
+            <!DOCTYPE html>
+              <html lang="sr">
+              <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>Tvoje telo ne traži savršenstvo. Samo prisustvo.</title>
+                  <style>
+                      body {
+                          font-family: 'Arial', sans-serif;
+                          background-color: #f5f5f5;
+                          margin: 0;
+                          padding: 0;
+                          color: #444444;
+                      }
+                      .email-container {
+                          width: 100%;
+                          background-color: #ffffff;
+                          max-width: 600px;
+                          margin: 0 auto;
+                          padding: 40px;
+                          box-sizing: border-box;
+                          border-radius: 10px;
+                          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+                      }
+                      .email-header {
+                          text-align: center;
+                          margin-bottom: 30px;
+                      }
+                      .email-header img {
+                          width: 80%;
+                          max-width: 500px;
+                          border-radius: 8px;
+                      }
+                      h1 {
+                          color: #2d9d8b;
+                          font-size: 28px;
+                          margin-bottom: 15px;
+                          text-align: center;
+                          font-weight: bold;
+                      }
+                      p {
+                          color: #555555;
+                          font-size: 16px;
+                          line-height: 1.7;
+                          margin-bottom: 20px;
+                      }
+                      .cta-button {
+                          display: inline-block;
+                          padding: 15px 30px;
+                          background-color: #2d9d8b;
+                          color: white;
+                          text-decoration: none;
+                          font-size: 18px;
+                          font-weight: bold;
+                          border-radius: 5px;
+                          margin-top: 20px;
+                          text-align: center;
+                          transition: background-color 0.3s;
+                      }
+                      .cta-button:hover {
+                          background-color: #1f7d6a;
+                      }
+                      .footer {
+                          text-align: center;
+                          color: #888888;
+                          font-size: 12px;
+                          margin-top: 40px;
+                      }
+                      .footer a {
+                          color: #2d9d8b;
+                          text-decoration: none;
+                      }
+                  </style>
+              </head>
+              <body>
+                  <div class="email-container">
+                      <div class="email-header">
+                          <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+                      </div>
+                      <h1>Tvoje telo ne traži savršenstvo. Samo prisustvo.</h1>
+                      <p>Zdravo 🌱</p>
+                      <p>Hvala ti što si napravio prvi korak. Znam da nije mali.</p>
+                      <p>U vremenu kada se zdravlje pretvara u pritisak, dijetu, izazov, rezultat – ti si odlučio da napraviš prostor. Za sebe.</p>
+                      <p>NutriTrans nije još jedan plan. To je mesto gde tvoje navike, misli, emocije i telo… mogu konačno da sarađuju.</p>
+                      <p>Možeš odmah da testiraš kako to izgleda – prvi izveštaj možeš napraviti besplatno. Popuni svih 7 polja i klikni na dugme NT – dobićeš svoj prvi lični uvid.</p>
+                      <p>To nije rezultat. To je početak razumevanja.</p>
+                      <p>Nema trke. Nema savršenstva. Imaš pravo da počneš od mesta na kom jesi. I da ideš svojim ritmom.</p>
+                      <p>Mi smo tu – da slušamo, ne da komandujemo.</p>
+                      <p>Dobro došao.</p>
+                      <div class="footer">
+                          <p>Toplo, <br> NutriTrans tim</p>
+                          <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+                      </div>
+                  </div>
+              </body>
+              </html>`,
+          });
+
+          console.log(`✅ Email poslat korisniku: ${user.mail}`);
+        }
+      }
+    }
+
+    console.log("[CRON] Završena obrada.");
+  } catch (err) {
+    console.error("[CRON] Greška u cron jobu:", err);
+  }
+});
+
+//Mail 2 za slanje korisniku koji sa prvim Starter paketom - 3 dana posle prve prijave
+cron.schedule("0 9 * * *", async () => {
+  console.log(`[CRON-3days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+
+  try {
+    // Izračunaj datum 3 dana unazad (samo dan i datum, bez vremena)
+    const danas = new Date();
+    const preTriDana = new Date();
+    preTriDana.setDate(danas.getDate() - 3);
+
+    // Očistimo vreme za tačno poređenje po danu
+    preTriDana.setHours(0, 0, 0, 0);
+    const krajDana = new Date(preTriDana);
+    krajDana.setHours(23, 59, 59, 999);
+
+    // Pronađi sve "Starter" pakete kreirane pre tačno 3 dana
+    const paketi = await Paket.find({
+      status: "Aktivan",
+      naziv_paketa: "Starter",
+      datum_kreiranja: {
+        $gte: preTriDana,
+        $lte: krajDana,
+      },
+    });
+
+    for (const paket of paketi) {
+      // Proveri da li korisnik ima samo taj jedan aktivan paket
+      const aktivniPaketiUsera = await Paket.find({
+        idUser: paket.idUser,
+        status: "Aktivan",
+      });
+
+      if (aktivniPaketiUsera.length === 1) {
+        const user = await User.findById(paket.idUser);
+
+        if (user && user.wellcome === "1" && user.isVerified === true) {
+          await transporter.sendMail({
+            from: "office@nutritrans.com",
+            to: user.mail,
+            subject: "3 dana si sa nama 🎉",
+            html: `
+              <!DOCTYPE html>
+                <html lang="sr">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Zašto ništa nije 'problem u tebi'</title>
+                    <style>
+                        body {
+                            font-family: 'Arial', sans-serif;
+                            background-color: #f5f5f5;
+                            margin: 0;
+                            padding: 0;
+                            color: #444444;
+                        }
+                        .email-container {
+                            width: 100%;
+                            background-color: #ffffff;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 40px;
+                            box-sizing: border-box;
+                            border-radius: 10px;
+                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+                        }
+                        .email-header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        .email-header img {
+                            width: 80%;
+                            max-width: 500px;
+                            border-radius: 8px;
+                        }
+                        h1 {
+                            color: #2d9d8b;
+                            font-size: 28px;
+                            margin-bottom: 15px;
+                            text-align: center;
+                            font-weight: bold;
+                        }
+                        p {
+                            color: #555555;
+                            font-size: 16px;
+                            line-height: 1.7;
+                            margin-bottom: 20px;
+                        }
+                        .cta-button {
+                            display: inline-block;
+                            padding: 15px 30px;
+                            background-color: #2d9d8b;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 18px;
+                            font-weight: bold;
+                            border-radius: 5px;
+                            margin-top: 20px;
+                            text-align: center;
+                            transition: background-color 0.3s;
+                        }
+                        .cta-button:hover {
+                            background-color: #1f7d6a;
+                        }
+                        .footer {
+                            text-align: center;
+                            color: #888888;
+                            font-size: 12px;
+                            margin-top: 40px;
+                        }
+                        .footer a {
+                            color: #2d9d8b;
+                            text-decoration: none;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="email-container">
+                        <div class="email-header">
+                            <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+                        </div>
+                        <h1>Zašto ništa nije 'problem u tebi'</h1>
+                        <p>Hej 👋</p>
+                        <p>Znaš ono kad znaš šta bi trebalo, ali jednostavno – ne možeš da se pokreneš? I onda se pojavi osećaj… krivice?</p>
+                        <p>To nije lenjost. Nije slabost. Nisi ti problem.</p>
+                        <p>To je umor od toga da stalno počinješ ispočetka bez pravog sistema, bez podrške i bez razumevanja.</p>
+                        <p>U NutriTrans-u to želimo da promenimo. Nećemo ti reći “uradi ovo”. Prvo ćemo te pitati – “Kako si?”</p>
+                        <p>Ako se prepoznaješ u ovome, znaj da nisi sam. I da postoji način koji ne boli.</p>
+                        <p>Tu smo.</p>
+                        <p>NutriTrans</p>
+                        <div class="footer">
+                            <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+          });
+
+          console.log(`✅ [3days] Email poslat korisniku: ${user.mail}`);
+        }
+      }
+    }
+
+    console.log("[CRON-3days] Završena obrada.");
+  } catch (err) {
+    console.error("[CRON-3days] Greška u cron jobu:", err);
+  }
+});
+
+//Mail 3 za slanje korisniku koji sa prvim Starter paketom - 5 dana posle prve prijave
+cron.schedule("0 9 * * *", async () => {
+  console.log(`[CRON-5days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+
+  try {
+    const danas = new Date();
+    const prePetDana = new Date();
+    prePetDana.setDate(danas.getDate() - 5);
+
+    prePetDana.setHours(0, 0, 0, 0);
+    const krajDana = new Date(prePetDana);
+    krajDana.setHours(23, 59, 59, 999);
+
+    const paketi = await Paket.find({
+      status: "Aktivan",
+      naziv_paketa: "Starter",
+      datum_kreiranja: {
+        $gte: prePetDana,
+        $lte: krajDana,
+      },
+    });
+
+    for (const paket of paketi) {
+      const aktivniPaketiUsera = await Paket.find({
+        idUser: paket.idUser,
+        status: "Aktivan",
+      });
+
+      if (aktivniPaketiUsera.length === 1) {
+        const user = await User.findById(paket.idUser);
+
+        if (user && user.wellcome === "1" && user.isVerified === true) {
+          await transporter.sendMail({
+            from: "office@nutritrans.com",
+            to: user.mail,
+            subject: "Prošlo je 5 dana – kako ti ide?",
+            html: `
+              <!DOCTYPE html>
+                <html lang="sr">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Šta ako zdravlje ne treba da boli?</title>
+                    <style>
+                        body {
+                            font-family: 'Arial', sans-serif;
+                            background-color: #f5f5f5;
+                            margin: 0;
+                            padding: 0;
+                            color: #444444;
+                        }
+                        .email-container {
+                            width: 100%;
+                            background-color: #ffffff;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 40px;
+                            box-sizing: border-box;
+                            border-radius: 10px;
+                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+                        }
+                        .email-header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        .email-header img {
+                            width: 80%;
+                            max-width: 500px;
+                            border-radius: 8px;
+                        }
+                        h1 {
+                            color: #2d9d8b;
+                            font-size: 28px;
+                            margin-bottom: 15px;
+                            text-align: center;
+                            font-weight: bold;
+                        }
+                        p {
+                            color: #555555;
+                            font-size: 16px;
+                            line-height: 1.7;
+                            margin-bottom: 20px;
+                        }
+                        .cta-button {
+                            display: inline-block;
+                            padding: 15px 30px;
+                            background-color: #2d9d8b;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 18px;
+                            font-weight: bold;
+                            border-radius: 5px;
+                            margin-top: 20px;
+                            text-align: center;
+                            transition: background-color 0.3s;
+                        }
+                        .cta-button:hover {
+                            background-color: #1f7d6a;
+                        }
+                        .footer {
+                            text-align: center;
+                            color: #888888;
+                            font-size: 12px;
+                            margin-top: 40px;
+                        }
+                        .footer a {
+                            color: #2d9d8b;
+                            text-decoration: none;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="email-container">
+                        <div class="email-header">
+                            <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+                        </div>
+                        <h1>Šta ako zdravlje ne treba da boli?</h1>
+                        <p>Ovo nije priča o nekom ko je skinuo 20kg.</p>
+                        <p>Ovo je priča o osobi koja je, prvi put, sela i iskreno popunila svoj dnevnik u NutriTrans aplikaciji.</p>
+                        <p>Nije ništa menjala prvi dan. Samo je gledala. Pratila. Razumela.</p>
+                        <p>I već tada… došlo je olakšanje.</p>
+                        <p>Zato što zdravlje nije počelo kad je prestala da jede slatkiše. Počelo je kad je prestala da se bori protiv sebe.</p>
+                        <p>Zdravlje je odnos. I odnos se gradi. Korak po korak.</p>
+                        <p>Ti ne moraš da se menjaš da bi počeo. Treba ti samo mesto koje te ne osuđuje. I vodi.</p>
+                        <p>NutriTrans je baš to.</p>
+                        <div class="footer">
+                            <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+          });
+
+          console.log(`✅ [5days] Email poslat korisniku: ${user.mail}`);
+        }
+      }
+    }
+
+    console.log("[CRON-5days] Završena obrada.");
+  } catch (err) {
+    console.error("[CRON-5days] Greška u cron jobu:", err);
+  }
+});
+
+//Mail 4 za slanje korisniku koji sa prvim Starter paketom - 7 dana posle prve prijave
+cron.schedule("0 9 * * *", async () => {
+  console.log(`[CRON-7days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+
+  try {
+    const danas = new Date();
+    const preSedamDana = new Date();
+    preSedamDana.setDate(danas.getDate() - 7);
+
+    preSedamDana.setHours(0, 0, 0, 0);
+    const krajDana = new Date(preSedamDana);
+    krajDana.setHours(23, 59, 59, 999);
+
+    const paketi = await Paket.find({
+      status: "Aktivan",
+      naziv_paketa: "Starter",
+      datum_kreiranja: {
+        $gte: preSedamDana,
+        $lte: krajDana,
+      },
+    });
+
+    for (const paket of paketi) {
+      const aktivniPaketiUsera = await Paket.find({
+        idUser: paket.idUser,
+        status: "Aktivan",
+      });
+
+      if (aktivniPaketiUsera.length === 1) {
+        const user = await User.findById(paket.idUser);
+
+        if (user && user.wellcome === "1" && user.isVerified === true) {
+          await transporter.sendMail({
+            from: "office@nutritrans.com",
+            to: user.mail,
+            subject: "7 dana si sa nama – vreme za sledeći korak?",
+            html: `
+              <!DOCTYPE html>
+                <html lang="sr">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Kad si spreman – mi smo tu.</title>
+                    <style>
+                        body {
+                            font-family: 'Arial', sans-serif;
+                            background-color: #f5f5f5;
+                            margin: 0;
+                            padding: 0;
+                            color: #444444;
+                        }
+                        .email-container {
+                            width: 100%;
+                            background-color: #ffffff;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 40px;
+                            box-sizing: border-box;
+                            border-radius: 10px;
+                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+                        }
+                        .email-header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        .email-header img {
+                            width: 80%;
+                            max-width: 500px;
+                            border-radius: 8px;
+                        }
+                        h1 {
+                            color: #2d9d8b;
+                            font-size: 28px;
+                            margin-bottom: 15px;
+                            text-align: center;
+                            font-weight: bold;
+                        }
+                        p {
+                            color: #555555;
+                            font-size: 16px;
+                            line-height: 1.7;
+                            margin-bottom: 20px;
+                        }
+                        .cta-button {
+                            display: inline-block;
+                            padding: 15px 30px;
+                            background-color: #2d9d8b;
+                            color: white;
+                            text-decoration: none;
+                            font-size: 18px;
+                            font-weight: bold;
+                            border-radius: 5px;
+                            margin-top: 20px;
+                            text-align: center;
+                            transition: background-color 0.3s;
+                        }
+                        .cta-button:hover {
+                            background-color: #1f7d6a;
+                        }
+                        .footer {
+                            text-align: center;
+                            color: #888888;
+                            font-size: 12px;
+                            margin-top: 40px;
+                        }
+                        .footer a {
+                            color: #2d9d8b;
+                            text-decoration: none;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="email-container">
+                        <div class="email-header">
+                            <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+                        </div>
+                        <h1>Kad si spreman – mi smo tu.</h1>
+                        <p>Neću ti reći da “sad moraš da kreneš”. Možda ti još treba malo vremena. Možda ti treba još koji znak.</p>
+                        <p>Ali ako ti je dosta:</p>
+                        <ul>
+                            <li>počinjanja ponedeljkom</li>
+                            <li>praznih aplikacija koje ti ne daju odgovore</li>
+                            <li>osećaja da si sam u ovome</li>
+                        </ul>
+                        <p>…onda znaj da postoji način koji ne traži savršenstvo.</p>
+                        <p>U NutriTrans-u si vođen, ali slobodan. I sve što trebaš da uradiš je da odlučiš: <strong>“Želim da budem uz sebe.”</strong></p>
+                        <p>Kad klikneš “pretplata” – ne ulaziš u sistem. Ulaziš u proces. I nisi sam.</p>
+                        <p>Tu smo. Kad god ti budeš spreman.</p>
+                        <p>NutriTrans</p>
+                        <div class="footer">
+                            <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `,
+          });
+
+          console.log(`✅ [7days] Email poslat korisniku: ${user.mail}`);
+        }
+      }
+    }
+
+    console.log("[CRON-7days] Završena obrada.");
+  } catch (err) {
+    console.error("[CRON-7days] Greška u cron jobu:", err);
+  }
+});
+
+//Mail 7 za slanje korisniku koji sa prvim Starter paketom - 28 dana posle prve prijave
+cron.schedule("0 9 * * *", async () => {
+  console.log(`[CRON-28days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+
+  try {
+    const danas = new Date();
+    const preDvadesetOsamDana = new Date();
+    preDvadesetOsamDana.setDate(danas.getDate() - 28);
+
+    preDvadesetOsamDana.setHours(0, 0, 0, 0);
+    const krajDana = new Date(preDvadesetOsamDana);
+    krajDana.setHours(23, 59, 59, 999);
+
+    const paketi = await Paket.find({
+      status: "Aktivan",
+      naziv_paketa: "Starter",
+      datum_kreiranja: {
+        $gte: preDvadesetOsamDana,
+        $lte: krajDana,
+      },
+    });
+
+    for (const paket of paketi) {
+      const aktivniPaketiUsera = await Paket.find({
+        idUser: paket.idUser,
+        status: "Aktivan",
+      });
+
+      if (aktivniPaketiUsera.length === 1) {
+        const user = await User.findById(paket.idUser);
+
+        if (user && user.wellcome === "1" && user.isVerified === true) {
+          await transporter.sendMail({
+            from: "office@nutritrans.com",
+            to: user.mail,
+            subject: "28 dana – vreme za sledeći korak? 🚀",
+            html: `
+            <!DOCTYPE html>
+            <html lang="sr">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Doslednost ne znači savršenstvo. Već da ne odustaješ od sebe.</title>
+                <style>
+                    body {
+                        font-family: 'Arial', sans-serif;
+                        background-color: #f5f5f5;
+                        margin: 0;
+                        padding: 0;
+                        color: #444444;
+                    }
+                    .email-container {
+                        width: 100%;
+                        background-color: #ffffff;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 40px;
+                        box-sizing: border-box;
+                        border-radius: 10px;
+                        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+                    }
+                    .email-header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                    }
+                    .email-header img {
+                        width: 80%;
+                        max-width: 500px;
+                        border-radius: 8px;
+                    }
+                    h1 {
+                        color: #2d9d8b;
+                        font-size: 28px;
+                        margin-bottom: 15px;
+                        text-align: center;
+                        font-weight: bold;
+                    }
+                    p {
+                        color: #555555;
+                        font-size: 16px;
+                        line-height: 1.7;
+                        margin-bottom: 20px;
+                    }
+                    .cta-button {
+                        display: inline-block;
+                        padding: 15px 30px;
+                        background-color: #2d9d8b;
+                        color: white;
+                        text-decoration: none;
+                        font-size: 18px;
+                        font-weight: bold;
+                        border-radius: 5px;
+                        margin-top: 20px;
+                        text-align: center;
+                        transition: background-color 0.3s;
+                    }
+                    .cta-button:hover {
+                        background-color: #1f7d6a;
+                    }
+                    .footer {
+                        text-align: center;
+                        color: #888888;
+                        font-size: 12px;
+                        margin-top: 40px;
+                    }
+                    .footer a {
+                        color: #2d9d8b;
+                        text-decoration: none;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="email-container">
+                    <div class="email-header">
+                        <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+                    </div>
+                    <h1>Doslednost ne znači savršenstvo. Već da ne odustaješ od sebe.</h1>
+                    <p>Polako se približava kraj tvoje prve mesečne pretplate. I znamo jedno:</p>
+                    <p>Ako si još tu – onda si već uradio više nego što misliš.</p>
+                    <p>Možda nisi bio savršen. Možda nisi ispunio svaki dan. Ali nisi odustao. A to – menja sve.</p>
+                    <p>Zato te želimo podsetiti:</p>
+                    <p><strong>Ovo nije kraj. Ovo je prelazak na sledeći nivo.</strong></p>
+                    <p>Tvoje telo, tvoje navike, tvoje poverenje – svi rastu kroz kontinuitet.</p>
+                    <p>Ako odlučiš da nastaviš, bićemo ovde.</p>
+                    <p>Ako zatreba pomoć – tu smo.</p>
+                    <p>Ako ti treba pauza – razumećemo.</p>
+                    <p>Ali jedno znaj:</p>
+                    <p><strong>Promena se ne meri danima. Već doslednošću.</strong> A ti je već imaš u sebi.</p>
+                    <p>S ljubavlju,</p>
+                    <p>NutriTrans tim</p>
+                    <div class="footer">
+                        <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+                        <p><a href="#">Poseti našu web stranicu</a></p>
+                        <p><a href="mailto:contact@nutritrans.com">Kontaktiraj nas</a></p>
+                    </div>
+                </div>
+            </body>
+            </html>
+
+            `,
+          });
+
+          console.log(`✅ [28days] Email poslat korisniku: ${user.mail}`);
+        }
+      }
+    }
+
+    console.log("[CRON-28days] Završena obrada.");
+  } catch (err) {
+    console.error("[CRON-28days] Greška u cron jobu:", err);
+  }
+});
+
+//==== CONNECTIONS ====
 
 //DEV
 // const sslOptions = {
-//   key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"), // Path to your private key
+//   key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
 //   cert: fs.readFileSync(
 //     "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
 //   ),
@@ -9095,14 +10194,13 @@ let add = async () => {
 
 //PRODUCTION
 // const sslOptions = {
-//   key: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/privkey.pem"), // Path to your private key
-//   cert: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/fullchain.pem"), // Path to your certificate
+//   key: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/privkey.pem"),
+//   cert: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/fullchain.pem"),
 // };
 
 //SA HTTPS
 // mongoose.connection.once("open", () => {
 //   console.log("Connected to MongoDB!");
-//   // Start HTTPS server
 //   https.createServer(sslOptions, app).listen(PORT, () => {
 //     console.log(`HTTPS server running on port ${PORT}`);
 //   });
@@ -9113,7 +10211,6 @@ mongoose.connection.once("open", () => {
   console.log("Connected to MongoDB");
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    // add();
   });
 });
 
