@@ -3,10 +3,10 @@ const Organizacije = require("../models/Ogranizacije");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const Paket = require("../models/Paket");
+const Kod = require("../models/Kod");
 
 // RADI
 const getAllUsers = async (req, res) => {
-
   const users = await User.find().select("-password").lean();
 
   if (!users?.length) {
@@ -28,31 +28,64 @@ const getAllUsers = async (req, res) => {
 //       return res.status(400).json({ message: "Nisu nadjeni korisnici" });
 //     }
 
-//     const usersWithPackages = await Promise.all(users.map(async (user) => {
-//       const activePackage = await Paket.findOne({
-//         idUser: user._id,
-//         datum_isteka: { $gt: new Date() },
-//         status: "Aktivan"
-//       })
-//       .sort({ datum_kreiranja: -1 })
-//       .select("naziv_paketa datum_placanja");
+// const usersWithPackages = await Promise.all(users.map(async (user) => {
+//   const activePackage = await Paket.findOne({
+//     idUser: user._id,
+//     datum_isteka: { $gt: new Date() },
+//     status: "Aktivan"
+//   })
+//   .sort({ datum_kreiranja: -1 })
+//   .select("naziv_paketa datum_placanja");
 
-//       return {
-//         _id: user._id, //_id: user._id,
-//         name: user.name,
-//         lastName: user.lastName,
-//         mail: user.mail,
-//         pol: user.pol,
-//         komentar: user.komentar,
-//         lastActivePackage: activePackage
-//       };
-//     }));
+//   return {
+//     _id: user._id, //_id: user._id,
+//     name: user.name,
+//     lastName: user.lastName,
+//     mail: user.mail,
+//     pol: user.pol,
+//     komentar: user.komentar,
+//     lastActivePackage: activePackage
+//   };
+// }));
 
 //     res.json(usersWithPackages);
 //   } catch (err) {
 //     res.status(500).json({ message: "Došlo je do greške", error: err.message });
 //   }
 // };
+
+//Salje usere sa paketom i sa kodom ako ima
+const getAllUsersWithUsedCodes = async (req, res) => {
+  const users = await User.find().select("-password").lean();
+
+  if (!users?.length) {
+    return res.status(400).json({ message: "Nisu nadjeni korisnici" });
+  }
+
+  const usersWithPackages = await Promise.all(
+    users.map(async (user) => {
+      const activePackage = await Paket.findOne({
+        idUser: user._id,
+        datum_isteka: { $gt: new Date() },
+        status: "Aktivan",
+      })
+        .sort({ datum_kreiranja: -1 })
+        .select("naziv_paketa datum_placanja tip broj.full ");
+
+      const usedCodes = await Kod.find({
+        idUser: { $in: [user._id.toString()] },
+      });
+
+      return {
+        ...user,
+        lastActivePackage: activePackage,
+        usedCodes, //
+      };
+    })
+  );
+
+  res.json(usersWithPackages);
+};
 
 const getOneUser = async (req, res) => {
   const { id } = req.params;
@@ -65,7 +98,6 @@ const getOneUser = async (req, res) => {
 
   res.json(user);
 };
-
 
 //Saljemo sve objeket iz kolekcije ali samo sa _id i name
 const getAllUserNames = async (req, res) => {
@@ -139,19 +171,15 @@ const createNewUser = async (req, res) => {
 
     await Promise.all(updatePromises);
 
-    res
-      .status(201)
-      .json({
-        message: "User and organizations created and updated successfully",
-      });
+    res.status(201).json({
+      message: "User and organizations created and updated successfully",
+    });
   } catch (error) {
     console.error("Error:", error);
-    res
-      .status(500)
-      .json({
-        message: "Creating user and updating organizations failed",
-        error,
-      });
+    res.status(500).json({
+      message: "Creating user and updating organizations failed",
+      error,
+    });
   }
 };
 
@@ -292,8 +320,6 @@ const createNewUser = async (req, res) => {
 
 //New
 const updateUser = async (req, res) => {
-
-
   const {
     id,
     mail,
@@ -340,7 +366,7 @@ const updateUser = async (req, res) => {
     selectedDefTip,
     allergiesEnabled,
     allergyChoice,
-    highlighted
+    highlighted,
   } = req.body;
 
   // console.log("Podaci podlsti: ", req.body);
@@ -360,8 +386,8 @@ const updateUser = async (req, res) => {
     user.kuk = kukova;
     user.vrat = vrat;
     user.krvGru = bloodType;
-    user.actlvl = activityLevel;  //Mozda nije ovaj - Zato ih ja parsujem u broj???
-    user.nivoAkt = nivoAkt;   
+    user.actlvl = activityLevel; //Mozda nije ovaj - Zato ih ja parsujem u broj???
+    user.nivoAkt = nivoAkt;
     user.tdee = tdee;
     user.primcilj = primcilj;
     user.ukupnaKalVred = ukupnaKalVred;
@@ -398,13 +424,15 @@ const updateUser = async (req, res) => {
     const updatedUser = await user.save();
 
     // Respond with success message
-    res.json({ message: `${updatedUser.name} has been updated successfully`, updatedUser });  //Za sad ga stavljam se salje ceo objekat
+    res.json({
+      message: `${updatedUser.name} has been updated successfully`,
+      updatedUser,
+    }); //Za sad ga stavljam se salje ceo objekat
   } catch (error) {
-    console.error('Error updating user: ', error);
-    res.status(500).json({ message: 'Error updating user', error });
+    console.error("Error updating user: ", error);
+    res.status(500).json({ message: "Error updating user", error });
   }
 };
-
 
 // @desc Delete a user
 // @route DELETE /users
@@ -457,10 +485,10 @@ const deleteUser = async (req, res) => {
   res.json(reply);
 };
 
-
 module.exports = {
   getAllUsers,
   getAllUserNames,
+  getAllUsersWithUsedCodes,
   getOneUser,
   createNewUser,
   updateUser,

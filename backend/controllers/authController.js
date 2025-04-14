@@ -60,18 +60,18 @@ const login = async (req, res) => {
       console.error("Greška pri brisanju paketa:", err);
     });
 
-  //Azurira sve pakete koji su istekli
-  const today = new Date();
-  const paketi = await Paket.find({ idUser: foundUser._id }); //tip: "Godišnje"
-  const updatedPaketi = await Promise.all(
-    paketi.map(async (paket) => {
-      if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
-        paket.status = "Neaktivan";
-        await paket.save();
-      }
-      return paket;
-    })
-  );
+  //Azurira sve pakete koji su istekli - GODISNJE SAMO - PREMESTENO U KRON
+  // const today = new Date();
+  // const paketi = await Paket.find({ idUser: foundUser._id, tip: "Godišnje" }); //tip: "Godišnje"
+  // const updatedPaketi = await Promise.all(
+  //   paketi.map(async (paket) => {
+  //     if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
+  //       paket.status = "Neaktivan";
+  //       await paket.save();
+  //     }
+  //     return paket;
+  //   })
+  // );
 
   res.cookie("jwt", refreshToken, {
     httpOnly: true, //accessible only by web server
@@ -299,7 +299,10 @@ const register = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+    user.currentToken = verificationToken;
+    await user.save();
+
+    const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}`;
     // const verificationLink = `http://localhost:5000/verify-email?token=${verificationToken}`;
 
     const transporter = nodemailer.createTransport({
