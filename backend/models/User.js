@@ -96,6 +96,15 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  datumRegistracije: {
+    type: String,
+    required: false,
+    default: "",
+  },
+  currentToken: {
+    type: String,
+    default: null,
+  },
   isVerified: {
     type: Boolean,
     required: false,
@@ -170,7 +179,7 @@ const userSchema = new mongoose.Schema({
   selectedIshrana: {
     type: String,
     required: false,
-    default: "Tvoja ishrana",
+    default: "671784a5782070c626c837d8",
   },
   voljeneNamirnice: {
     type: String,
