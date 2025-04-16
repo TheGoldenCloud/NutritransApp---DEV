@@ -275,7 +275,7 @@ const register = async (req, res) => {
       status: "Aktivan",
       tip: "",
       broj: {
-        full: "1",
+        full: "0",
         base: "0",
       },
       datum_kreiranja: new Date(),
