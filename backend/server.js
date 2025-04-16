@@ -417,7 +417,7 @@ passport.use(
             roles: ["Klijent"],
             actlvl: 1.2, //Ovaj se mozda ne koristi...
             nivoAkt: 1.2, //
-            selectedIshrana: "Tvoja ishrana",
+            selectedIshrana: "671794e2fd27a07021e11385",
             selectedIshranaNaziv: "Tvoja ishrana",
             allergiesEnabled: "ne",
             allergyChoice: "no",
@@ -434,9 +434,9 @@ passport.use(
             valuta: "RSD",
             status_placanja: "Plaćeno",
             status: "Aktivan",
-            tip: "Jednokratno",
+            tip: "", //Postavio sam "Jednokratno"
             broj: {
-              full: "1",
+              full: "0",
               base: "0",
             },
             datum_kreiranja: new Date(),
@@ -555,7 +555,7 @@ passport.use(
 
 //Za saving user data inside the session
 passport.serializeUser((user, done) => {
-  console.log("serialize user", user);
+  // console.log("serialize user", user);
   done(null, user.id);
 });
 
@@ -563,7 +563,7 @@ passport.serializeUser((user, done) => {
 passport.deserializeUser(async (id, done) => {
   try {
     const user = await User.findById(id); //Kako by id, mozda da ga trazim po mailu?
-    console.log("DEserialize user", user);
+    // console.log("DEserialize user", user);
     done(null, user);
   } catch (err) {
     done(err, null);
@@ -1977,15 +1977,30 @@ app.use("/test", async (req, res) => {
   }
 });
 
-//Formatiranje vremena za pdf
+//Formatiranje vremena za pdf kod admina!
+// function getCurrentTime() {
+//   let now = new Date();
+
+//   now.setUTCHours(now.getUTCHours() + 1);
+
+//   let hours = now.getUTCHours();
+//   let minutes = now.getUTCMinutes();
+//   let seconds = now.getUTCSeconds();
+
+//   hours = hours < 10 ? "0" + hours : hours;
+//   minutes = minutes < 10 ? "0" + minutes : minutes;
+//   seconds = seconds < 10 ? "0" + seconds : seconds;
+
+//   return `${hours}:${minutes}:${seconds}`;
+// }
+
+//work here
 function getCurrentTime() {
   let now = new Date();
 
-  now.setUTCHours(now.getUTCHours() + 1);
-
-  let hours = now.getUTCHours();
-  let minutes = now.getUTCMinutes();
-  let seconds = now.getUTCSeconds();
+  let hours = now.getHours();
+  let minutes = now.getMinutes();
+  let seconds = now.getSeconds();
 
   hours = hours < 10 ? "0" + hours : hours;
   minutes = minutes < 10 ? "0" + minutes : minutes;
@@ -2542,6 +2557,7 @@ app.use("/test1", async (req, res) => {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
+        timeZone: "Europe/Belgrade",
       }); //Za danasnji dan
 
       const today1 = new Date();
@@ -3031,6 +3047,8 @@ app.get("/dani", async (req, res) => {
 //Ovaj koristim!
 app.use("/test2", async (req, res) => {
   let { brojDana, obroci, data_ } = req.body;
+
+  // console.log("Data => ", data_);
 
   //Trazimo sve nmirnice
   let sveNaminice = await Namirnice.find({}).lean();
@@ -4041,23 +4059,24 @@ app.use("/test2", async (req, res) => {
     //Za tabelu
     const klijentData_ = {
       "Težina (kg)": {
-        value: data_.tezina,
+        value: data_.tezina ? data_.tezina : "Nema",
         icon: "public/pdficons/tezina.png",
       },
       "Visina (cm)": {
-        value: data_.visina,
+        value: data_.visina ? data_.visina : "Nema",
         icon: "public/pdficons/visina.png",
       },
       "Primarni cilj": {
-        value: data_.primcilj,
+        value: data_.primcilj ? data_.primcilj : "Nema",
         icon: "public/pdficons/primcilj.png",
       },
       // "Specifičan cilj": {
       //   value: data_.specilj,
       //   icon: "public/pdficons/tdee.png",
       // },
+      //Postavi da nema ovde motiva iz chata!
       Motivacija: {
-        value: data_.motiv,
+        value: data_.motiv ? data_.motiv : "Nema",
         icon: "public/pdficons/speccilj.png",
       },
       "Nivo aktivnosti": {
@@ -4065,36 +4084,39 @@ app.use("/test2", async (req, res) => {
         icon: "public/pdficons/nivoakt.png",
       },
       "Datum rođenja": {
-        value: data_.datumRodjenja,
+        value: data_.datumRodjenja ? data_.datumRodjenja : "Nema",
         icon: "public/pdficons/datum.png",
       },
       "Vrsta fizičke aktivnosti": {
-        value: data_.vrstaFiz,
+        value: data_.vrstaFiz ? data_.vrstaFiz : "Nema",
         icon: "public/pdficons/man_4.png",
       },
       "Obim struka (cm)": {
-        value: data_.struk,
+        value: data_.struk ? data_.struk : "Nema",
         icon: "public/pdficons/obim.png",
       },
       "Obim kukova (cm)": {
-        value: data_.kuk,
+        value: data_.kuk ? data_.kuk : "Nema",
         icon: "public/pdficons/hips.png",
       },
-      "Krvna grupa": { value: data_.krvGru, icon: "public/pdficons/blood.png" },
+      "Krvna grupa": {
+        value: data_.krvGru ? data_.krvGru : "Nema",
+        icon: "public/pdficons/blood.png",
+      },
       // Dijagnoza: {
       //   value: data_.dijagnoza,
       //   icon: "public/pdficons/tdee.png",
       // },
       Alergije: {
-        value: data_.alergije,
+        value: data_.alergije ? data_.alergije : "Nema",
         icon: "public/pdficons/airborne.png",
       },
       Ishrana: {
-        value: data_.selectedIshranaNaziv,
+        value: data_.selectedIshranaNaziv ? data_.selectedIshranaNaziv : "Nema",
         icon: "public/pdficons/dish.png",
       },
       "Obroci nedeljno": {
-        value: data_.ucestBr,
+        value: data_.ucestBr ? data_.ucestBr : "Nema",
         icon: "public/pdficons/ish.png",
       },
       Pušenje: { value: data_.pus, icon: "public/pdficons/cigarrete.png" },
@@ -4491,6 +4513,7 @@ app.use("/test2", async (req, res) => {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
+        timeZone: "Europe/Belgrade",
       }); //Za danasnji dan
 
       const today1 = new Date();
@@ -4537,7 +4560,13 @@ app.use("/test2", async (req, res) => {
       // console.log('klijentData => ', klijentData);
 
       try {
-        const vreme = getCurrentTime();
+        const vreme = new Date().toLocaleTimeString("sr-RS", {
+          timeZone: "Europe/Belgrade",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+
         await PdfSchema.create({
           title: data_.primcilj,
           pdf: fileName,
@@ -9268,6 +9297,40 @@ app.post("/updateKomentar", async (req, res) => {
   }
 });
 
+//
+app.post("/datumOtkazivanjaRecurringPaketa", async (req, res) => {
+  try {
+    const { user } = req.body;
+    const { tranId } = user;
+
+    console.log("TRANS ID => ", tranId);
+
+    const paket = await Paket.findOne({ TransId: tranId });
+
+    if (!paket) {
+      return res.status(404).json({
+        message: "Paket sa datim TransId nije pronađen.",
+      });
+    }
+
+    paket.datum_otkazivanja = new Date();
+    paket.status = "Otkazan";
+
+    await paket.save();
+
+    res.status(200).json({
+      message: "Paket je uspešno otkazan.",
+      status: "success",
+    });
+  } catch (error) {
+    console.error("Greška pri otkazivanju paketa:", error);
+    res.status(500).json({
+      message: "Došlo je do greške na serveru.",
+      status: "error",
+    });
+  }
+});
+
 app.get("/octopus", async (req, res) => {
   try {
     const response = await fetch("https://sandbox.octopos.rs/api/weborder", {
@@ -10185,12 +10248,12 @@ cron.schedule("0 9 * * *", async () => {
 //==== CONNECTIONS ====
 
 //DEV
-// const sslOptions = {
-//   key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
-//   cert: fs.readFileSync(
-//     "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
-//   ),
-// };
+const sslOptions = {
+  key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
+  cert: fs.readFileSync(
+    "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
+  ),
+};
 
 //PRODUCTION
 // const sslOptions = {
@@ -10199,20 +10262,20 @@ cron.schedule("0 9 * * *", async () => {
 // };
 
 //SA HTTPS
-// mongoose.connection.once("open", () => {
-//   console.log("Connected to MongoDB!");
-//   https.createServer(sslOptions, app).listen(PORT, () => {
-//     console.log(`HTTPS server running on port ${PORT}`);
-//   });
-// });
-
-//BEZ HTTPS
 mongoose.connection.once("open", () => {
-  console.log("Connected to MongoDB");
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log("Connected to MongoDB!");
+  https.createServer(sslOptions, app).listen(PORT, () => {
+    console.log(`HTTPS server running on port ${PORT}`);
   });
 });
+
+//BEZ HTTPS
+// mongoose.connection.once("open", () => {
+//   console.log("Connected to MongoDB");
+//   app.listen(PORT, () => {
+//     console.log(`Server running on port ${PORT}`);
+//   });
+// });
 
 mongoose.connection.on("error", (err) => {
   console.log(err);
