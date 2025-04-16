@@ -305,6 +305,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  googleId: {
+    type: String,
+    required: false,
+  },
+  isVerifiedGoogle: {
+    type: Boolean,
+    required: false,
+  },
   komentar: {
     //Komentar da veljko postavlja... imageUrl
     type: String,
