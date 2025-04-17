@@ -3261,6 +3261,37 @@ app.use("/test2", async (req, res) => {
     // Prvi pasus treba da bude bogat, detaljan, sa puno informacija i inspiracije. Započni ga sa motivacijom korisnika, navodeći specifične aspekte njegovog napretka. Koristi puno detalja i proširi odgovor, koristeći primere i detalje o njegovim naporima da poveća mišićnu masu. Neka odgovor bude što duži, sa puno entuzijazma, podrške i divljenja.
     // Drugi pasus neka naglasi važnost dugoročnog održavanja zdravih navika i koristi koje će korisnik imati, poput poboljšanja zdravstvenog stanja, povećane energije i boljeg kvaliteta života. Uvod treba da bude pisan u drugom licu jednine, obraćajući se direktno korisniku, i treba da ima podržavajući i inspirativan ton.
     // `;
+    //work here 1
+    let uvodPredpromptSveIsto = `Ti si najbolji nutricionista na svetu. Tvoj zadatak je da napišeš personalizovani uvod za plan ishrane za korisnika sa sledećim podacima:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+
+      Tvoj zadatak je da na osnovu ovih podataka napišeš uvod koji:
+      ● Personalizovano se obraća korisniku.
+      ● Kratko analizira trenutno stanje korisnika i ističe ključne informacije.
+      ● Motivacionim tonom ohrabruje korisnika za promenu.
+      ● Nagoveštava sledeći deo izveštaja ('Holistički pristup').
+    `;
 
     let uvodPredprompt = `Ti si veštačka inteligencija koja nudi uvod o planu ishrane. Pružaj detaljna objašnjenja za ${data_.name} ${data_.lastName}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}. Njegov/a primarni cilj ishrane je ${data_?.primcilj}.`;
     const uvodPredpromptNew = `Ti si najbolji nutricionista na svetu. Tvoj zadatak je da napišeš personalizovani uvod za plan ishrane za korisnika sa sledećim podacima:
@@ -3296,7 +3327,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew,
+          content: uvodPredpromptSveIsto,
         },
         {
           role: "user",
@@ -3323,6 +3354,31 @@ app.use("/test2", async (req, res) => {
     // });
 
     // prompt - zakljucak
+    let zakljucakPredpromptSveIsto = `Ti najbolje nudis zaključke o planu ishrane. Pružaj detaljna objašnjenja za:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let zakljucakPredprompt = `Ti si veštačka inteligencija koja nudi zakljucak o planu ishrane. Pružaj detaljna objašnjenja za ${data_.name} ${data_.lastName}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}. Njegov/a primarni cilj ishrane je ${data_?.primcilj}.`;
     let promptZakljucak = `${prompt.zakljucak.text} Neka broj karaktera bude tačno: ${prompt.zakljucak.brKar}`;
     const zakljucakResult = await openai.chat.completions.create({
@@ -3330,7 +3386,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //zakljucakPredprompt => Veljko je trazio da svuda bude isti predprompt
+          content: zakljucakPredpromptSveIsto,
         },
         {
           role: "user",
@@ -3351,6 +3407,31 @@ app.use("/test2", async (req, res) => {
     zakljucak = zakljucak.replace(/[#!&*ü!_?@**]/g, "");
 
     // prompt - smernice za ishranu
+    let smernicePredpromptSveIsto = `Ti nudis najbolje smernice za ishranu. Pružaj detaljna objašnjenja za:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let smernicePredprompt = `Ti si veštačka inteligencija koja nudi smernice za ishranu. Pružaj detaljna objašnjenja za ${data_.name} ${data_.lastName}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}.`;
     let promptSmernice = `${prompt.smernice.text} Neka broj karaktera bude tačno: ${prompt.smernice.brKar}`;
     const smerniceResult = await openai.chat.completions.create({
@@ -3358,7 +3439,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //smernicePredprompt => Veljko je trazio da svuda bude isti predprompt
+          content: smernicePredpromptSveIsto,
         },
         {
           role: "user",
@@ -3380,6 +3461,31 @@ app.use("/test2", async (req, res) => {
     // console.log('Smernice => ', smernice); //Lepo ispisuje
 
     // prompt - plan fizicke aktivnosti
+    let fizAktPredpromptSveIsto = `Ti najbolje nudis personalizovane planove fizičke aktivnosti. Pružaj detaljna objašnjenja za:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let fizAktPredprompt = generisiPlanMetaData(data_);
     let fizAktPromt = `${prompt.fizAkt.text} Neka broj karaktera bude tačno: ${prompt.fizAkt.brKar}`;
     const planFizAktResult = await openai.chat.completions.create({
@@ -3387,7 +3493,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //fizAktPredprompt => Veljko je trazio da svuda bude isti predprompt
+          content: fizAktPredpromptSveIsto,
           // content: `Ti si veštačka inteligencija koja nudi personalizovan plan fizičke aktivnosti. Pružaj detaljna objašnjenja za ${data_.ime} ${data_.prezime} koji ima ${data_.tezina} kg i visok je ${data_.visina} cm, obim struka mu je ${data_.struk} cm, sa odabranim fizičkim aktivnostima ${data_.vrstaFiz}. Motivacija za potrebu fizičkih aktivnosti uključuje ${data_.motiv}, a ima dijagnozu ${data_.dijagnoza}.`
         },
         {
@@ -3465,6 +3571,31 @@ app.use("/test2", async (req, res) => {
     }
 
     // prompt - imunološka podrška
+    let imunPredpromptSveIsto = `Ti najbolje dajes izvestaje i preporuke za brigu o imunitetu. Pružaj detaljno objašnjenje:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let imunPredprompt = generisiPreporuke(data_);
     let imunPrompt = `${prompt.imun.text} Neka broj karaktera bude tačno: ${prompt.imun.brKar}`;
     const podrzkaImunResult = await openai.chat.completions.create({
@@ -3472,7 +3603,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //imunPredprompt => Veljko je trazio da svuda bude isti predprompt
+          content: imunPredpromptSveIsto,
           // content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o imunitetu. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime} može poboljšati svoj imunitet, imajući u vidu da ima ${vrstaImuniteta} i motivaciju za promenu: ${data_.motiv}. Njegovi specificni ciljevi su ${data_.specilj}`
         },
         {
@@ -3491,6 +3622,31 @@ app.use("/test2", async (req, res) => {
     // console.log('podrzkaImun:', podrzkaImun);
 
     // prompt - perosnalizovan plan ishrane - text pre dana
+    let personalPredpromptSveIsto = `Ti si najbolji nutricionista na svetu. Specijalizovan si za kreiranje personalizovanih planova ishrane prilagođenih individualnim potrebama i ciljevima korisnika. Na osnovu sledećih podataka o korisniku:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let perosnalPredprompt = `Ti si veštačka inteligencija koja nudi uvod o personlanizovanom planu ishrane, pružaj detaljno objašnjenje za ${data_.name} ${data_.lastName} sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}, sa primaranim ciljem ${data_.primcilj}`;
     const perosnalPredpromptNew = `
     Ti si najbolji nutricionista na svetu specijalizovan za kreiranje personalizovanih planova ishrane prilagođenih individualnim potrebama i ciljevima korisnika.
@@ -3545,7 +3701,7 @@ app.use("/test2", async (req, res) => {
         {
           role: "system",
           //Upotpuni ovo podacima
-          content: uvodPredpromptNew, //perosnalPredpromptNew => Veljko je trazio da svuda bude isti predprompt
+          content: personalPredpromptSveIsto,
         },
         {
           role: "user",
@@ -3606,6 +3762,31 @@ app.use("/test2", async (req, res) => {
     }
 
     // prompt - savet za spavanje
+    let spavanjePredpromptSveIsto = `Ti najbolje nudis preporuke za brigu o snu. Pružaj detaljno objašnjenje o:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let spavanjePredprompt = generisiPreporukeZaSan(data_);
     let promptSpavanje = `${prompt.san.text} Neka broj karaktera bude tačno: ${prompt.san.brKar}`;
     const spavanjeSavetResult = await openai.chat.completions.create({
@@ -3613,7 +3794,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //spavanjePredprompt => Veljko je trazio da svuda bude isti predprompt
+          content: spavanjePredpromptSveIsto,
           // content: `Ti si veštačka inteligencija koja nudi preporuke za brigu o snu. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime} može poboljšati svoj san, imajući u vidu da ima nivo fizičke aktivnosti ${data_.ddd}. A ima specifične ciljeve ${data_.specilj} i navike u ishrani ${data_.navikeUish}.`
         },
         {
@@ -3633,6 +3814,31 @@ app.use("/test2", async (req, res) => {
     // console.log('spavanjeSavet:', spavanjeSavet);
 
     // prompt - preporuka za unos vode
+    let vodaPredpromptSveIsto = `Ti najbolje nudis preporuke za brigu o unosu vode u organizam. Pružaj detaljno objašnjenje o tome kako:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let vodaPredpromt = `Ti si veštačka inteligencija koja nudi preporuke za brigu o unosu vode u organizam. Pružaj detaljno objašnjenje o tome kako ${
       data_.name
     } ${data_.lastName} ${data_.pol} ${data_.godine} godina, sa težinom ${
@@ -3648,7 +3854,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //vodaPredpromt => Veljko je trazio da svuda bude isti predprompt
+          content: vodaPredpromptSveIsto,
         },
         {
           role: "user",
@@ -3710,6 +3916,31 @@ app.use("/test2", async (req, res) => {
     }
 
     // prompt - preporuka za prethodna iskustva sa ishranana
+    let prethIshPredpromptSveIsto = `Ti najbolje nudis preporuke o prethodnim iskustvima sa dijetama. Pružaj detaljno objašnjenje o:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let prethishPredprompt = generisiPreporukeZaDijete(data_);
     let promptPretIsh = `${prompt.predijeta.text} Neka broj karaktera bude tačno: ${prompt.predijeta.brKar}`;
     const pretIshResult = await openai.chat.completions.create({
@@ -3717,7 +3948,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //prethishPredprompt => Veljko je trazio da svuda bude isti predprompt
+          content: prethIshPredpromptSveIsto,
           //content: `Ti si veštačka inteligencija koja nudi preporuke o prethodnim iskustvima sa dijetama. Pružaj detaljno objašnjenje o tome kako ${data_.ime} ${data_.prezime}, sa ciljevima ${data_.primcilj}, i specifičnim ciljem ${data_.specilj} i motivacijom za ${data_.motiv} sa prethosnim iskustom ${data_.iskSaDijetama}.`
         },
         {
@@ -3890,6 +4121,31 @@ app.use("/test2", async (req, res) => {
     // FullWeekSchema.parse(hol);
 
     // prompt - preporuka za alkohola
+    let alkoholIshPredpromptSveIsto = `Ti najbolje nudis preporuke za brigu o unosu alkohola u organizam. Pružaj detaljno objašnjenje o:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let alkoholpPredprompt = ``;
     let promptAlkohol = ``;
     let alkoholResult = "";
@@ -3902,7 +4158,7 @@ app.use("/test2", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: uvodPredpromptNew, //alkoholpPredprompt => Veljko je trazio da svuda bude isti predprompt
+            content: alkoholIshPredpromptSveIsto,
           },
           {
             role: "user",
@@ -3922,6 +4178,31 @@ app.use("/test2", async (req, res) => {
     //DODAJ CONDITIONAL AKO PUSI DA LI UOPSTE DA POKRECE PROMPT
 
     // prompt - preporuka za alkohola
+    let pusenjeIshPredpromptSveIsto = `Ti najbolje nudis preporuke za brigu o pušenju cigareta. Pružaj detaljno objašnjenje o:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let pusenjePredprompt = ``;
     let promptPusenje = ``;
     let pusenjeResult = "";
@@ -3934,7 +4215,7 @@ app.use("/test2", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: uvodPredpromptNew, //pusenjePredprompt => Veljko je trazio da svuda bude isti predprompt
+            content: pusenjeIshPredpromptSveIsto,
           },
           {
             role: "user",
@@ -3952,6 +4233,31 @@ app.use("/test2", async (req, res) => {
     }
 
     // prompt - alergije - renderuje se conditionaly
+    let alergijePredpromptSveIsto = `Ti najbolje nudis preporuke za brigu o alergijama i intolerancijama. Pružaj detaljno objašnjenje za:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let alergijePredprompt = `Ti si veštačka inteligencija koja nudi preporuke za brigu o alergijama i intolerancijama. Pružaj detaljno objašnjenje za ${data_.name} ${data_.lastName}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}, sa alergijama ${data_.alerg} i intolerancijama za ${data_.intolerancije}`;
     let promptAlergije = `${prompt.alergiio.text} Neka broj karaktera bude tačno: ${prompt.alergiio.brKar}`;
     const alergijeResult = await openai.chat.completions.create({
@@ -3959,7 +4265,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //alergijePredprompt => Veljko je trazio da svuda bude isti predprompt
+          content: alergijePredpromptSveIsto,
         },
         {
           role: "user",
@@ -3978,6 +4284,31 @@ app.use("/test2", async (req, res) => {
     alergije = alergije.replace(/[#!&*ü!_?@**]/g, "");
 
     //Za holisticki pristup  ${data_.nivoFizAktivnosti} => Dodaj iz fronta
+    let holistickiPredpromptSveIsto = `Ti si najbolji nutricionista na svetu. Specijalizovan si za personalizovane savete o zdravlju i dobrobiti zasnovane na holističkom pristupu. Tvoj zadatak je da pišeš sekciju izveštaja koja korisniku jasno objašnjava značaj povezivanja ishrane, fizičke aktivnosti i mentalnog zdravlja za postizanje dugoročnih rezultata. Koristi sledeće personalizovane podatke o korisniku:
+      ● Ime i prezime: ${data_.name} ${data_.lastName}
+      ● Godine: ${data_.godine}
+      ● Visina: ${data_.visina} cm
+      ● Težina: ${data_.tezina} kg
+      ● Pol: ${data_.pol}
+      ● Primarni cilj: ${data_.primcilj}
+      ● Specifičan cilj: ${data_.specilj}
+      ● Motivacija za promenu: ${data_.motiv}
+      ● Trenutne navike u ishrani: ${data_.navikeUish}
+      ● Stil ishrane: ${data_.selectedIshranaNaziv}
+      ● Učestalost obroka: ${data_.ucestBr}
+      ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+      ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+      ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+      ● Alergije: ${data_.alerg}
+      ● Intolerancije: ${data_.intolerancije}
+      ● Namirnice koje voli: ${data_.voljeneNamirnice}
+      ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+      ● Dijagnoza: ${data_.dijagnoza}
+      ● Stanje imuniteta: ${stanjeImun}
+      ● Unos alkohola: ${data_.alk}
+      ● Navika pušenja: ${data_.pus}
+    `;
+
     let holistickiPristupPredpromt = `Ti si veštačka inteligencija koja nudi personalizovane savete o zdravlju i dobrobiti zasnovane na holističkom pristupu. Pružaj detaljna objašnjenja za ${data_.name} ${data_.lastName}, sa godinama: ${data_.godine} visina: ${data_.visina}, sa težinom: ${data_.tezina}, pol: ${data_.pol}, sa primarnim ciljem ${data_.primcilj} i specifičnim ciljem ${data_.specilj}. Motivacija za promenu uključuje ${data_.motiv}, nivo fizičke aktivnosti: 1.2, vrsta fizičke aktivnosti: ${data_.vrstaFiz}, i ishrana: ${data_.selectedIshranaNaziv}. Sa stanjem imuniteta ${stanjeImun}`;
     let holistickiPristupPredpromtNew = `
     Ti si najbolji nutricionista na svetu, specijalizovan za personalizovane savete o zdravlju i
@@ -4021,7 +4352,7 @@ app.use("/test2", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: uvodPredpromptNew, //holistickiPristupPredpromtNew => Veljko je trazio da svuda bude isti predprompt
+          content: holistickiPredpromptSveIsto,
         },
         {
           //Promeni
@@ -4605,42 +4936,42 @@ app.use("/test2", async (req, res) => {
           idUser: data_._id,
           poslatiPrompt: {
             // predUvod: uvodPredprompt,
-            predUvod: uvodPredpromptNew,
+            predUvod: uvodPredpromptSveIsto,
             uvod: promptUvod,
 
             // predHolistickiPristup: holistickiPristupPredpromt,
-            predHolistickiPristup: uvodPredpromptNew, // holistickiPristupPredpromtNew,
+            predHolistickiPristup: holistickiPredpromptSveIsto, // holistickiPristupPredpromtNew,
             holistickiPristup: promptHolistickiPristup,
 
             // predPlanIshrane: perosnalPredprompt,
-            predPlanIshrane: uvodPredpromptNew, //perosnalPredpromptNew
+            predPlanIshrane: personalPredpromptSveIsto, //perosnalPredpromptNew
             planIshrane: promptPersonal,
 
             predDani: daniPredprompt_,
             dani: daniPrmpt_,
 
-            predSmernice: uvodPredpromptNew, //smernicePredprompt
+            predSmernice: smernicePredpromptSveIsto, //smernicePredprompt
             smernice: promptSmernice,
 
-            predPlanFizickeAktivnosti: uvodPredpromptNew, //fizAktPredprompt
+            predPlanFizickeAktivnosti: fizAktPredpromptSveIsto, //fizAktPredprompt
             planFizickeAktivnosti: fizAktPromt,
 
-            predPodrskaZaImunitet: uvodPredpromptNew, //imunPredprompt
+            predPodrskaZaImunitet: imunPredpromptSveIsto, //imunPredprompt
             podrskaZaImunitet: imunPrompt,
 
-            predSpavanjeSavet: uvodPredpromptNew, //spavanjePredprompt
+            predSpavanjeSavet: spavanjePredpromptSveIsto, //spavanjePredprompt
             spavanjeSavet: promptSpavanje,
 
-            predUnosVode: uvodPredpromptNew, //vodaPredpromt
+            predUnosVode: vodaPredpromptSveIsto, //vodaPredpromt
             unosVode: promptVoda,
 
-            predPusenje: uvodPredpromptNew, // pusenjePredprompt
+            predPusenje: pusenjeIshPredpromptSveIsto, // pusenjePredprompt
             pusenje: promptPusenje,
 
-            predAlkohol: uvodPredpromptNew, //alkoholpPredprompt
+            predAlkohol: alkoholIshPredpromptSveIsto, //alkoholpPredprompt
             alkohol: promptAlkohol,
 
-            predZakljucak: uvodPredpromptNew, //zakljucakPredprompt
+            predZakljucak: zakljucakPredpromptSveIsto, //zakljucakPredprompt
             zakljucak: promptZakljucak,
           },
           odgovor: {
@@ -9314,7 +9645,7 @@ app.post("/datumOtkazivanjaRecurringPaketa", async (req, res) => {
     }
 
     paket.datum_otkazivanja = new Date();
-    paket.status = "Otkazan";
+    paket.status = "Neaktivan";
 
     await paket.save();
 
@@ -10248,18 +10579,18 @@ cron.schedule("0 9 * * *", async () => {
 //==== CONNECTIONS ====
 
 //DEV
-const sslOptions = {
-  key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
-  cert: fs.readFileSync(
-    "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
-  ),
-};
+// const sslOptions = {
+//   key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
+//   cert: fs.readFileSync(
+//     "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
+//   ),
+// };
 
 //PRODUCTION
-// const sslOptions = {
-//   key: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/privkey.pem"),
-//   cert: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/fullchain.pem"),
-// };
+const sslOptions = {
+  key: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/privkey.pem"),
+  cert: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/fullchain.pem"),
+};
 
 //SA HTTPS
 mongoose.connection.once("open", () => {
