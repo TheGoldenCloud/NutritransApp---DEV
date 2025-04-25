@@ -748,6 +748,22 @@ app.get("/get-files/two/:id", async (req, res) => {
   }
 });
 
+//Vraca default pdf - work here
+app.get("/get-defaultPDF", async (req, res) => {
+  try {
+    const data = await PdfSchema.findOne({
+      pdf: "defoltniPdf.pdf",
+    });
+
+    res.send({ status: "ok", data: data });
+  } catch (error) {
+    res.status(500).send({
+      status: "error",
+      message: "Nesto se desilo lose sa uzimanjem defoltnim PDF-om iz baze!",
+    });
+  }
+});
+
 // Download file
 app.get("/files/:filename", (req, res) => {
   const filePath = path.join(__dirname, "files", req.params.filename);
@@ -1157,9 +1173,9 @@ const MealSchema = z.object({
   opis: z.string(),
   sastojci: z.string(),
   instrukcije: z.string(),
-  kalorije: z.number(),
+  // kalorije: z.number(),
   // cena: z.number(),
-  nutritivna_vrednost: z.string(), //Added
+  // nutritivna_vrednost: z.string(),
   Makronutrijenti: z.object({
     Proteini: z.number(),
     Ugljeni_hidrati: z.number(),
@@ -1994,7 +2010,6 @@ app.use("/test", async (req, res) => {
 //   return `${hours}:${minutes}:${seconds}`;
 // }
 
-//work here
 function getCurrentTime() {
   let now = new Date();
 
@@ -3048,7 +3063,7 @@ app.get("/dani", async (req, res) => {
 app.use("/test2", async (req, res) => {
   let { brojDana, obroci, data_ } = req.body;
 
-  // console.log("Data => ", data_);
+  console.log("Data => ", data_);
 
   //Trazimo sve nmirnice
   let sveNaminice = await Namirnice.find({}).lean();
@@ -3066,8 +3081,6 @@ app.use("/test2", async (req, res) => {
     const namirnica = sveNaminice.find((n) => n._id.equals(id));
     return namirnica ? namirnica.naziv : null;
   });
-
-  //work here
 
   let stanjeImun = data_.imunitet === "Da" ? "jak imunitet" : "slab imunitet";
 
@@ -3261,7 +3274,6 @@ app.use("/test2", async (req, res) => {
     // Prvi pasus treba da bude bogat, detaljan, sa puno informacija i inspiracije. Započni ga sa motivacijom korisnika, navodeći specifične aspekte njegovog napretka. Koristi puno detalja i proširi odgovor, koristeći primere i detalje o njegovim naporima da poveća mišićnu masu. Neka odgovor bude što duži, sa puno entuzijazma, podrške i divljenja.
     // Drugi pasus neka naglasi važnost dugoročnog održavanja zdravih navika i koristi koje će korisnik imati, poput poboljšanja zdravstvenog stanja, povećane energije i boljeg kvaliteta života. Uvod treba da bude pisan u drugom licu jednine, obraćajući se direktno korisniku, i treba da ima podržavajući i inspirativan ton.
     // `;
-    //work here 1
     let uvodPredpromptSveIsto = `Ti si najbolji nutricionista na svetu. Tvoj zadatak je da napišeš personalizovani uvod za plan ishrane za korisnika sa sledećim podacima:
       ● Ime i prezime: ${data_.name} ${data_.lastName}
       ● Godine: ${data_.godine}
@@ -4052,53 +4064,201 @@ app.use("/test2", async (req, res) => {
               Svi obroci moraju imati precizne kalorijske vrednosti koje doprinose ukupnom dnevnom unosu kalorija. Ne uključuj obroke koji nisu navedeni.
               `;
 
-    //NEW
-    let daniPredprompt_ = `
-        Ti si nutricionista specijalizovan za precizne planove ishrane. Tvoja odgovornost je da generišeš plan ishrane u JSON formatu koristeći samo zadatu šemu.
-        
-        Pravila:
-        - Sve mora biti na napisano na SRPSKOM jeziku.
-        - Nemoj da raspodeliš kalorijsku vrednost ravnomerno između obroka.
-        - Koristi samo zadate namirnice i izbegavaj isključene namirnice.
-        - Nazivi dana treba da budu 'Dan 1', 'Dan 2', itd., bez imena dana u nedelji.
-        - Za svaki obrok navedi tačnu kalorijsku vrednost.
-        - Za svaki obrok navedi mikronutrijente: proteini, ugljeni hidrati i masti.
-        - Sastojci moraju biti u gramima.
-        - Nutritivne verednosti mora biti u gramima.
-      `;
+    // let daniPredprompt_ = `
+    //     Ti si nutricionista specijalizovan za precizne planove ishrane. Tvoja odgovornost je da generišeš plan ishrane u JSON formatu koristeći samo zadatu šemu.
+
+    //     Pravila:
+    //     - Sve mora biti na napisano na SRPSKOM jeziku.
+    //     - Nemoj da raspodeliš kalorijsku vrednost ravnomerno između obroka.
+    //     - Koristi samo zadate namirnice i izbegavaj isključene namirnice.
+    //     - Nazivi dana treba da budu 'Dan 1', 'Dan 2', itd., bez imena dana u nedelji.
+    //     - Za svaki obrok navedi tačnu kalorijsku vrednost.
+    //     - Za svaki obrok navedi mikronutrijente: proteini, ugljeni hidrati i masti.
+    //     - Sastojci moraju biti u gramima.
+    //     - Nutritivne verednosti mora biti u gramima.
+    //   `;
 
     //Ovaj deo je bio u daniPredprompt_ na kraju recenice
     //- Makronutrijenti moraju biti u gramima a ne u procentima!
 
-    // work here
-    let daniPrmpt_ = `
-        Napravi plan ishrane (${
-          data_.selectedIshranaNaziv
-        }) za tačno ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}
-        - Primarni cilj: ${data_.primcilj}.
-        - Ukupna kalorijska vrednost: ${Math.round(
-          data_.ukupnaKalVred
-        )} kcal po danu.
-        - Preferirane namirnice: ${data_.voljeneNamirnice}.
-        - Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
-        - Iz izhrane izbaciti namirnice: ${NeodabraneNamirniceUsera}, kao i proizvode napravljene od tih namirnica.
-        
+    // let daniPrmpt_ = `
+    //     Napravi plan ishrane (${
+    //       data_.selectedIshranaNaziv
+    //     }) za tačno ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}
+    //     - Primarni cilj: ${data_.primcilj}.
+    //     - Ukupna kalorijska vrednost: ${Math.round(
+    //       data_.ukupnaKalVred
+    //     )} kcal po danu.
+    //     - Preferirane namirnice: ${data_.voljeneNamirnice}.
+    //     - Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+    //     - Iz izhrane izbaciti namirnice: ${NeodabraneNamirniceUsera}, kao i proizvode napravljene od tih namirnica.
 
-        Raspodela kalorija među obrocima treba da prati sledeća pravila:
-        - Doručak: 25-30% kalorija
-        - Ručak: 40-45% kalorija
-        - Večera: 25-30% kalorija
-        
-        Minimalna tolerancija odstupanja u kalorijama je ±2%.
+    //     Raspodela kalorija među obrocima treba da prati sledeća pravila:
+    //     - Doručak: 25-30% kalorija
+    //     - Ručak: 40-45% kalorija
+    //     - Večera: 25-30% kalorija
 
-        - Svi odgovori moraju biti napisani isključivo na čistom srpskom jeziku, uz pravilnu upotrebu gramatike i padeža. Izbegavaj bilo kakve dijalekte, regionalizme, jekavicu ili ekavicu – koristi standardni srpski književni jezik. Posebno obrati pažnju na tačnu upotrebu padeža (npr. 'Majo' umesto 'Maja' u vokativu). Tekst treba biti gramatički i pravopisno ispravan, prirodan i lako razumljiv.
-      `;
+    //     Minimalna tolerancija odstupanja u kalorijama je ±2%.
+
+    //     - Svi odgovori moraju biti napisani isključivo na čistom srpskom jeziku, uz pravilnu upotrebu gramatike i padeža. Izbegavaj bilo kakve dijalekte, regionalizme, jekavicu ili ekavicu – koristi standardni srpski književni jezik. Posebno obrati pažnju na tačnu upotrebu padeža (npr. 'Majo' umesto 'Maja' u vokativu). Tekst treba biti gramatički i pravopisno ispravan, prirodan i lako razumljiv.
+    //   `;
 
     //Ovaj deo je bio u daniPrmpt_ na kraju recenice
     // Svaki obrok mora sadržavati PROCENTE makronutrijenata:
     // - Proteini: %
     // - Ugljeni hidrati: %
     // - Masti: %
+
+    // ● Primarni cilj: ${data_.primcilj}
+    // ● Specifičan cilj: ${data_.specilj}
+    // ● Motivacija za promenu: ${data_.motiv}
+    // ● Trenutne navike u ishrani: ${data_.navikeUish}
+    // ● Stil ishrane: ${data_.selectedIshranaNaziv}
+    // ● Učestalost obroka: ${data_.ucestBr}
+    // ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+    // ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+    // ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+    // ● Alergije: ${data_.alerg}
+    // ● Intolerancije: ${data_.intolerancije}
+    // ● Namirnice koje voli: ${data_.voljeneNamirnice}
+    // ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+
+    //work here
+    let daniPredprompt_ = `
+      Ti si profesionalni nutricionista i dijetetičar, sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
+
+      ### Cilj:
+      Napravi plan ishrane **${
+        data_.selectedIshranaNaziv
+      }** za tačno **${brojDanaInt}** dana sa sledećim obrocima: **${obrociPrompt}** (doručak, ručak, večera).  
+      - **Primarni cilj**: ${data_.primcilj}  
+      - **Ukupna kalorijska vrednost po danu**: ${Math.round(
+        data_.ukupnaKalVred
+      )} kcal  
+      - **Preferirane (omiljene) namirnice**: ${data_.namirniceDa}
+      - **Namirnice koje klijent želi da izbegne**: ${
+        data_.neVoljeneNamirnice
+      }  
+      - **Namirnice koje su potpuno zabranjene**: ${data_.namirnice}
+    `;
+
+    let daniPrmpt_ = `
+      ### Pravila:
+
+      1. **Osnova ishrane**:
+        - Koristi stil ishrane definisan kao ${
+          data_.selectedIshranaNaziv
+        } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
+        - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima ${
+          data_.neVoljeneNamirnice
+        } i ${NeodabraneNamirniceUsera}.
+        - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+
+      2. **Upotreba omiljenih namirnica**:
+        - Ako su neke namirnice iz ${
+          data_.namirniceDa
+        }, možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
+
+      3. **Kalorijska raspodela po obrocima**:
+        - Doručak: 25–30%
+        - Ručak: 40–45%
+        - Večera: 25–30%
+        - Dozvoljeno odstupanje: ±2%
+
+      4. **Format svakog obroka**:
+        - Svaki obrok mora sadržati:
+          - **Opis**
+          - **Sastojke** (u gramima/ml)
+          - **Instrukcije za pripremu**
+          - **Kalorije**
+          - **Nutritivnu vrednost**
+          - **Makronutrijente** (brojčano)
+        - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
+
+      5. **Jezik**:
+        - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
+
+      6. **Logika kalorija**:
+        - Na osnovu ${Math.round(
+          data_.ukupnaKalVred
+        )}, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
+
+      ---
+
+      ### Primeri obroka u sledecem formatu:
+
+      **Doručak**  
+      **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.  
+      **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema  
+      **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.  
+      **Kalorije**: 520 kcal  
+      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g  
+      **Makronutrijenti**:  
+      - Proteini: 10g  
+      - Ugljeni hidrati: 60g  
+      - Masti: 20g  
+
+      ---
+
+      **Užina 1**  
+      **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.  
+      **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki  
+      **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.  
+      **Kalorije**: 180 kcal  
+      **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g  
+      **Makronutrijenti**:  
+      - Proteini: 15g  
+      - Ugljeni hidrati: 5g  
+      - Masti: 10g  
+
+      ---
+
+      **Ručak**  
+      **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.  
+      **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja  
+      **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.  
+      **Kalorije**: 860 kcal  
+      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g  
+      **Makronutrijenti**:  
+      - Proteini: 55g  
+      - Ugljeni hidrati: 60g  
+      - Masti: 35g  
+
+      ---
+
+      **Užina 2**  
+      **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.  
+      **Sastojci**: 1 banana (120g), 15g kikiriki putera  
+      **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.  
+      **Kalorije**: 210 kcal  
+      **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g  
+      **Makronutrijenti**:  
+      - Proteini: 5g  
+      - Ugljeni hidrati: 25g  
+      - Masti: 10g  
+
+      ---
+
+      **Večera**  
+      **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.  
+      **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)  
+      **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.  
+      **Kalorije**: 620 kcal  
+      **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g  
+      **Makronutrijenti**:  
+      - Proteini: 25g  
+      - Ugljeni hidrati: 50g  
+      - Masti: 20g  
+
+
+      ---
+
+      ### Output:
+      - Kompletan jelovnik za ${brojDanaInt} dana
+      - Po ${obrociPrompt.length} obroka dnevno
+      - Detaljno napisane instrukcije
+      - Poštovanje stila ishrane + personalnih ograničenja korisnika
+      `;
 
     const completion = await client.beta.chat.completions.parse({
       model: "gpt-4o-2024-08-06",
@@ -4676,19 +4836,19 @@ app.use("/test2", async (req, res) => {
             .font("OpenSans_Condensed-Regular")
             .text(`    ${meal.instrukcije}`);
 
-          pdfDoc
-            .font("OpenSans_Condensed-BoldItalic")
-            .text(`    Kalorije:`, { continued: true });
-          pdfDoc
-            .font("OpenSans_Condensed-Regular")
-            .text(`    ${meal.kalorije} kcal`);
+          // pdfDoc
+          //   .font("OpenSans_Condensed-BoldItalic")
+          //   .text(`    Kalorije:`, { continued: true });
+          // pdfDoc
+          //   .font("OpenSans_Condensed-Regular")
+          //   .text(`    ${meal.kalorije} kcal`);
 
-          pdfDoc
-            .font("OpenSans_Condensed-BoldItalic")
-            .text(`    Nutritivna vrednost:`, { continued: true });
-          pdfDoc
-            .font("OpenSans_Condensed-Regular")
-            .text(`    ${meal.nutritivna_vrednost}`);
+          // pdfDoc
+          //   .font("OpenSans_Condensed-BoldItalic")
+          //   .text(`    Nutritivna vrednost:`, { continued: true });
+          // pdfDoc
+          //   .font("OpenSans_Condensed-Regular")
+          //   .text(`    ${meal.nutritivna_vrednost}`);
 
           // pdfDoc
           //   .font("OpenSans_Condensed-BoldItalic")
@@ -5917,7 +6077,7 @@ app.patch("/updateNaminice", async (req, res) => {
   }
 });
 
-//Kada se promeni neka naminica - work here
+//Kada se promeni neka naminica
 app.post("/updateNaminiceNaChekbox", async (req, res) => {
   const { id, odabraneNamirnice } = req.body;
 
@@ -5951,7 +6111,6 @@ app.post("/updateNaminiceNaChekbox", async (req, res) => {
   }
 });
 
-//work here
 app.get("/checkNaminice", async (req, res) => {
   try {
     let sveNaminice = await Namirnice.find({}).lean();
@@ -6293,21 +6452,38 @@ app.post("/blogHistory", async (req, res) => {
 app.post("/proveraEmaila", async (req, res) => {
   const { email } = req.body;
 
+  const trimmedEmail = email ? email.trim() : "";
+
+  if (!trimmedEmail) {
+    return res.status(400).json({ error: "Molim vas unesite email adresu." });
+  }
+
+  const emailRegex =
+    /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)\.){3}(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)|\[(?:[0-9a-fA-F]{1,4}:){1,6}:(?:[0-9a-fA-F]{1,4}:)?[0-9a-fA-F]{1,4}|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\]))$/;
+
+  if (!emailRegex.test(trimmedEmail)) {
+    return res
+      .status(400)
+      .json({ error: "Molim vas unesite validnu email adresu." });
+  }
+
   try {
-    const user = await User.findOne({ mail: email });
+    const user = await User.findOne({
+      mail: { $regex: new RegExp(`^${trimmedEmail}$`, "i") },
+    });
 
     if (user) {
       return res
         .status(200)
-        .json({ message: "Posedujete nalog, možete se ulogovati!" });
+        .json({ message: "Posedujete nalog, mozete se ulogovati!" });
     } else {
       return res
         .status(404)
-        .json({ error: "Nemate nalog, možete ga napraviti" });
+        .json({ error: "Nemate nalog, mozete ga napraviti." });
     }
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: "Došlo je do greške na serveru!" });
+    return res.status(500).json({ error: "Doslo je do greske na serveru!" });
   }
 });
 
@@ -7889,7 +8065,7 @@ app.post("/bankaSuccess", async (req, res) => {
     </html>
     `;
 
-    //Update promokod work here
+    //Update promokod
     // console.log("User Id iz paketa => ", updatedPaket.idUser);
     // let kod = await Kod.findOne({ idUser: updatedPaket.idUser });
     // if (kod) {
