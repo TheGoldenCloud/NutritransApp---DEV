@@ -748,7 +748,7 @@ app.get("/get-files/two/:id", async (req, res) => {
   }
 });
 
-//Vraca default pdf - work here
+//Vraca default pdf
 app.get("/get-defaultPDF", async (req, res) => {
   try {
     const data = await PdfSchema.findOne({
@@ -3063,7 +3063,7 @@ app.get("/dani", async (req, res) => {
 app.use("/test2", async (req, res) => {
   let { brojDana, obroci, data_ } = req.body;
 
-  console.log("Data => ", data_);
+  // console.log("Data => ", data_);
 
   //Trazimo sve nmirnice
   let sveNaminice = await Namirnice.find({}).lean();
@@ -4124,141 +4124,284 @@ app.use("/test2", async (req, res) => {
     // ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
 
     //work here
-    let daniPredprompt_ = `
-      Ti si profesionalni nutricionista i dijetetičar, sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
+    // let daniPredprompt_ = `
+    //   Ti si profesionalni nutricionista i dijetetičar, sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane i kontrolor grešaka. Tvoj posao je da budeš opsesivno tačan. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
 
-      ### Cilj:
-      Napravi plan ishrane **${
-        data_.selectedIshranaNaziv
-      }** za tačno **${brojDanaInt}** dana sa sledećim obrocima: **${obrociPrompt}** (doručak, ručak, večera).  
-      - **Primarni cilj**: ${data_.primcilj}  
-      - **Ukupna kalorijska vrednost po danu**: ${Math.round(
-        data_.ukupnaKalVred
-      )} kcal  
-      - **Preferirane (omiljene) namirnice**: ${data_.namirniceDa}
-      - **Namirnice koje klijent želi da izbegne**: ${
-        data_.neVoljeneNamirnice
-      }  
-      - **Namirnice koje su potpuno zabranjene**: ${data_.namirnice}
-    `;
+    //   ### Cilj:
+    //   Napravi plan ishrane **${
+    //     data_.selectedIshranaNaziv
+    //   }** za tačno **${brojDanaInt}** dana sa sledećim obrocima: **${obrociPrompt}** (doručak, ručak, večera).
+    //   - **Primarni cilj**: ${data_.primcilj}
+    //   - **Ukupna kalorijska vrednost po danu**: ${Math.round(
+    //     data_.ukupnaKalVred
+    //   )} kcal
+    //   - **Preferirane (omiljene) namirnice**: ${data_.namirniceDa}
+    //   - **Namirnice koje klijent želi da izbegne**: ${
+    //     data_.neVoljeneNamirnice
+    //   }
+    //   - **Namirnice koje su potpuno zabranjene**: ${data_.namirnice}
+    // `;
 
-    let daniPrmpt_ = `
-      ### Pravila:
+    // let daniPrmpt_ = `
+    //   ### Pravila:
 
-      1. **Osnova ishrane**:
-        - Koristi stil ishrane definisan kao ${
-          data_.selectedIshranaNaziv
-        } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
-        - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima ${
-          data_.neVoljeneNamirnice
-        } i ${NeodabraneNamirniceUsera}.
-        - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+    //   1. **Osnova ishrane**:
+    //     - Koristi stil ishrane definisan kao ${
+    //       data_.selectedIshranaNaziv
+    //     } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
+    //     - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima ${
+    //       data_.neVoljeneNamirnice
+    //     } i ${NeodabraneNamirniceUsera}.
+    //     - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+    //
+    //   2. **Upotreba omiljenih namirnica**:
+    //     - Ako su neke namirnice iz ${
+    //       data_.namirniceDa
+    //     }, možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
 
-      2. **Upotreba omiljenih namirnica**:
-        - Ako su neke namirnice iz ${
-          data_.namirniceDa
-        }, možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
+    //   3. **Kalorijska raspodela po obrocima**:
+    //     - Doručak: 25–30%
+    //     - Ručak: 40–45%
+    //     - Večera: 25–30%
+    //     - Dozvoljeno odstupanje: ±2%
 
-      3. **Kalorijska raspodela po obrocima**:
-        - Doručak: 25–30%
-        - Ručak: 40–45%
-        - Večera: 25–30%
-        - Dozvoljeno odstupanje: ±2%
+    //   4. **Format svakog obroka**:
+    //     - Svaki obrok mora sadržati:
+    //       - **Opis**
+    //       - **Sastojke** (u gramima/ml)
+    //       - **Instrukcije za pripremu**
+    //       - **Kalorije**
+    //       - **Nutritivnu vrednost**
+    //       - **Makronutrijente** (brojčano)
+    //     - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
 
-      4. **Format svakog obroka**:
-        - Svaki obrok mora sadržati:
-          - **Opis**
-          - **Sastojke** (u gramima/ml)
-          - **Instrukcije za pripremu**
-          - **Kalorije**
-          - **Nutritivnu vrednost**
-          - **Makronutrijente** (brojčano)
-        - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
+    //   5. **Jezik**:
+    //     - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
 
-      5. **Jezik**:
-        - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
+    //   6. **Logika kalorija**:
+    //     - Na osnovu ${Math.round(
+    //       data_.ukupnaKalVred
+    //     )}, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
 
-      6. **Logika kalorija**:
-        - Na osnovu ${Math.round(
-          data_.ukupnaKalVred
-        )}, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
+    //   # Pravilo kontrole kalorija
 
-      ---
+    //   1. Počni od dnevnog kalorijskog cilja (npr. 2681 kcal).
+    //   2. Podeli cilj po obrocima prema zadatim procentima.
+    //   3. Za svaki obrok:
+    //     - Planiraj sastojke i količine da zbir kalorija bude unutar ciljanog raspona (±1%).
+    //     - Ako zbir nije tačan, koriguj količine namirnica dok ne postigneš cilj.
+    //   4. Nakon svih obroka, proveri da li zbir celog dana odgovara ukupnom kalorijskom cilju (±1%).
+    //   5. Ne završavaj dok sva odstupanja nisu u dozvoljenom rasponu.
 
-      ### Primeri obroka u sledecem formatu:
+    //   ---
 
-      **Doručak**  
-      **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.  
-      **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema  
-      **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.  
-      **Kalorije**: 520 kcal  
-      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g  
-      **Makronutrijenti**:  
-      - Proteini: 10g  
-      - Ugljeni hidrati: 60g  
-      - Masti: 20g  
+    //   ### Primeri obroka u sledecem formatu:
 
-      ---
+    //   **Doručak**
+    //   **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.
+    //   **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema
+    //   **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.
+    //   **Kalorije**: 520 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g
+    //   **Makronutrijenti**:
+    //   - Proteini: 10g
+    //   - Ugljeni hidrati: 60g
+    //   - Masti: 20g
 
-      **Užina 1**  
-      **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.  
-      **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki  
-      **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.  
-      **Kalorije**: 180 kcal  
-      **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g  
-      **Makronutrijenti**:  
-      - Proteini: 15g  
-      - Ugljeni hidrati: 5g  
-      - Masti: 10g  
+    //   ---
 
-      ---
+    //   **Užina 1**
+    //   **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.
+    //   **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki
+    //   **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.
+    //   **Kalorije**: 180 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g
+    //   **Makronutrijenti**:
+    //   - Proteini: 15g
+    //   - Ugljeni hidrati: 5g
+    //   - Masti: 10g
 
-      **Ručak**  
-      **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.  
-      **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja  
-      **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.  
-      **Kalorije**: 860 kcal  
-      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g  
-      **Makronutrijenti**:  
-      - Proteini: 55g  
-      - Ugljeni hidrati: 60g  
-      - Masti: 35g  
+    //   ---
 
-      ---
+    //   **Ručak**
+    //   **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.
+    //   **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja
+    //   **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.
+    //   **Kalorije**: 860 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g
+    //   **Makronutrijenti**:
+    //   - Proteini: 55g
+    //   - Ugljeni hidrati: 60g
+    //   - Masti: 35g
 
-      **Užina 2**  
-      **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.  
-      **Sastojci**: 1 banana (120g), 15g kikiriki putera  
-      **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.  
-      **Kalorije**: 210 kcal  
-      **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g  
-      **Makronutrijenti**:  
-      - Proteini: 5g  
-      - Ugljeni hidrati: 25g  
-      - Masti: 10g  
+    //   ---
 
-      ---
+    //   **Užina 2**
+    //   **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.
+    //   **Sastojci**: 1 banana (120g), 15g kikiriki putera
+    //   **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.
+    //   **Kalorije**: 210 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g
+    //   **Makronutrijenti**:
+    //   - Proteini: 5g
+    //   - Ugljeni hidrati: 25g
+    //   - Masti: 10g
 
-      **Večera**  
-      **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.  
-      **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)  
-      **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.  
-      **Kalorije**: 620 kcal  
-      **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g  
-      **Makronutrijenti**:  
-      - Proteini: 25g  
-      - Ugljeni hidrati: 50g  
-      - Masti: 20g  
+    //   ---
+
+    //   **Večera**
+    //   **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.
+    //   **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)
+    //   **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.
+    //   **Kalorije**: 620 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g
+    //   **Makronutrijenti**:
+    //   - Proteini: 25g
+    //   - Ugljeni hidrati: 50g
+    //   - Masti: 20g
+
+    //   ---
+
+    //   ### Output:
+    //   - Kompletan jelovnik za ${brojDanaInt} dana
+    //   - Po ${obrociPrompt.length} obroka dnevno
+    //   - Detaljno napisane instrukcije
+    //   - Poštovanje stila ishrane + personalnih ograničenja korisnika
+    //   `;
+
+    let daniPredprompt_ = `Ti si profesionalni nutricionista sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane i kontrolor grešaka. Tvoj posao je da budeš opsesivno tačan. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
+                          Ako se od tebe traži 3 ili 7 dana, obavezno generiši sve dane jedan za drugim, bez izostavljanja.
+                          "Generiši dug odgovor, ignoriši ograničenja dužine ako je potrebno, sve dok se zadatak ne završi kompletno."
+                          `;
+    let daniPrmpt_ = `### Cilj:
+                      Kreiraj sveobuhvatan plan ishrane po principima ${
+                        data_.selectedIshranaNaziv
+                      } za tačno ${brojDanaInt} uzastopnih dana, sa precizno ${obrociPrompt} definisana obroka dnevno (doručak, užina 1, ručak, užina 2, večera), bez ikakvog izostavljanja ili skraćivanja sadržaja.
+                      - **Primarni cilj**: ${data_.primcilj}  
+                      - **Ukupna kalorijska vrednost po danu**: ${Math.round(
+                        data_.ukupnaKalVred
+                      )} kcal  
+                      - **Preferirane (omiljene) namirnice**: ${
+                        data_.namirniceDa
+                      }
+                      - **Namirnice koje klijent želi da izbegne**: ${
+                        data_.voljeneNamirnice
+                      } 
+                      - **Namirnice koje su potpuno zabranjene**: ${
+                        data_.namirnice
+                      }
+                      - **Dizajniraj kompletan **${brojDanaInt}**jelovnik koji detaljno pokriva svih ${obrociPrompt} obroka dnevno, sledeći navedene parametre i pravila za svaki dan."
 
 
-      ---
+                      ### Pravila:
 
-      ### Output:
-      - Kompletan jelovnik za ${brojDanaInt} dana
-      - Po ${obrociPrompt.length} obroka dnevno
-      - Detaljno napisane instrukcije
-      - Poštovanje stila ishrane + personalnih ograničenja korisnika
-      `;
+                      Osnovno pravilo: Prvo saberi kalorije po sastojku. Zatim po obroku. Zatim po danu. Proveri odstupanje. Ako nije tačno, koriguj.
+
+                      1. **Osnova ishrane**:
+                        - Koristi stil ishrane definisan kao ${
+                          data_.selectedIshranaNaziv
+                        } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
+                        - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima  ${
+                          data_.namirnice
+                        } i ${data_.neVoljeneNamirnice}
+                        - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+
+                      2. **Upotreba omiljenih namirnica**:
+                        - Ako su neke namirnice iz ${
+                          data_.namirniceDa
+                        } , možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
+
+                      3. **Kalorijska raspodela po obrocima**:
+                        - Doručak: 25–30%
+                        - Ručak: 40–45%
+                        - Večera: 25–30%
+                        - Dozvoljeno odstupanje: ±2%
+
+                      4. **Format svakog obroka**:
+                        - Svaki obrok mora sadržati:
+                          - **Opis**
+                          - **Sastojke** (u gramima/ml)
+                          - **Instrukcije za pripremu**
+                          - **Kalorije**
+                          - **Nutritivnu vrednost**
+                          - **Makronutrijente** (brojčano)
+                        - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
+
+                      5. **Jezik**:
+                        - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
+
+                      6. **Logika kalorija**:
+                        - Na osnovu ${Math.round(
+                          data_.ukupnaKalVred
+                        )} kcal, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
+
+                      # 📊 Pravilo kontrole kalorija
+
+                      1. Počni od dnevnog kalorijskog cilja (npr. 2681 kcal).
+                      2. Podeli cilj po obrocima prema zadatim procentima.
+                      3. Za svaki obrok:
+                        - Planiraj sastojke i količine da zbir kalorija bude unutar ciljanog raspona (±1%).
+                        - Ako zbir nije tačan, koriguj količine namirnica dok ne postigneš cilj.
+                      4. Nakon svih obroka, proveri da li zbir celog dana odgovara ukupnom kalorijskom cilju (±1%).
+                      5. Ne završavaj dok sva odstupanja nisu u dozvoljenom rasponu.
+
+
+                      ---
+
+                      ### Primeri obroka u sledecem formatu:
+
+                      **Doručak**  
+                      **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.  
+                      **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema  
+                      **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.  
+                      **Kalorije**: 520 kcal  
+                      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g   
+
+                      ---
+
+                      **Užina 1**  
+                      **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.  
+                      **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki  
+                      **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.  
+                      **Kalorije**: 180 kcal  
+                      **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g  
+
+                      ---
+
+                      **Ručak**  
+                      **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.  
+                      **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja  
+                      **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.  
+                      **Kalorije**: 860 kcal  
+                      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g  
+
+                      ---
+
+                      **Užina 2**  
+                      **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.  
+                      **Sastojci**: 1 banana (120g), 15g kikiriki putera  
+                      **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.  
+                      **Kalorije**: 210 kcal  
+                      **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g  
+
+                      ---
+
+                      **Večera**  
+                      **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.  
+                      **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)  
+                      **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.  
+                      **Kalorije**: 620 kcal  
+                      **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g  
+
+                      ---
+
+                      ### Output:
+                      - Kompletan jelovnik za ${brojDanaInt} dana
+                      - Po ${obrociPrompt} obroka dnevno
+                      - Detaljno napisane instrukcije
+                      - Poštovanje stila ishrane + personalnih ograničenja korisnika
+                      - Generiši sve dane odjednom, osiguravajući da svaki obrok sledi pravila i kalorijske ciljeve.
+                      `;
 
     const completion = await client.beta.chat.completions.parse({
       model: "gpt-4o-2024-08-06",
