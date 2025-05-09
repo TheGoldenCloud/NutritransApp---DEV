@@ -4269,139 +4269,232 @@ app.use("/test2", async (req, res) => {
     //   - Poštovanje stila ishrane + personalnih ograničenja korisnika
     //   `;
 
-    let daniPredprompt_ = `Ti si profesionalni nutricionista sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane i kontrolor grešaka. Tvoj posao je da budeš opsesivno tačan. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
-                          Ako se od tebe traži 3 ili 7 dana, obavezno generiši sve dane jedan za drugim, bez izostavljanja.
-                          "Generiši dug odgovor, ignoriši ograničenja dužine ako je potrebno, sve dok se zadatak ne završi kompletno."
-                          `;
-    let daniPrmpt_ = `### Cilj:
-                      Kreiraj sveobuhvatan plan ishrane po principima ${
-                        data_.selectedIshranaNaziv
-                      } za tačno ${brojDanaInt} uzastopnih dana, sa precizno ${obrociPrompt} definisana obroka dnevno (doručak, užina 1, ručak, užina 2, večera), bez ikakvog izostavljanja ili skraćivanja sadržaja.
-                      - **Primarni cilj**: ${data_.primcilj}  
-                      - **Ukupna kalorijska vrednost po danu**: ${Math.round(
-                        data_.ukupnaKalVred
-                      )} kcal  
-                      - **Preferirane (omiljene) namirnice**: ${
-                        data_.namirniceDa
-                      }
-                      - **Namirnice koje klijent želi da izbegne**: ${
-                        data_.voljeneNamirnice
-                      } 
-                      - **Namirnice koje su potpuno zabranjene**: ${
-                        data_.namirnice
-                      }
-                      - **Dizajniraj kompletan **${brojDanaInt}**jelovnik koji detaljno pokriva svih ${obrociPrompt} obroka dnevno, sledeći navedene parametre i pravila za svaki dan."
+    // let striktnoDefIshrane = [
+    //   "Paleo dijeta",
+    //   "Veganska dijeta",
+    //   "Bezglutesnka dijeta",
+    //   "Keto dijeta",
+    //   "Mediteranska dijeta",
+    //   "Biljna ishrana",
+    // ];
+
+    // const isValidIshrana = striktnoDefIshrane.includes(
+    //   data_.selectedIshranaNaziv
+    // );
+
+    // const ishranaDeo = isValidIshrana
+    //   ? `po principima ${data_.selectedIshranaNaziv}`
+    //   : "";
+
+    // let daniPredprompt_ = `Ti si profesionalni nutricionista sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane i kontrolor grešaka. Tvoj posao je da budeš opsesivno tačan. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
+    //                       Ako se od tebe traži 3 ili 7 dana, obavezno generiši sve dane jedan za drugim, bez izostavljanja.
+    //                       "Generiši dug odgovor, ignoriši ograničenja dužine ako je potrebno, sve dok se zadatak ne završi kompletno."
+    //                       `;
+    // let daniPrmpt_ = `### Cilj:
+    //                   Kreiraj sveobuhvatan plan ishrane ${ishranaDeo} za tačno ${brojDanaInt} uzastopnih dana, sa precizno ${obrociPrompt} definisana obroka dnevno (doručak, užina 1, ručak, užina 2, večera), bez ikakvog izostavljanja ili skraćivanja sadržaja.
+    //                   - **Primarni cilj**: ${data_.primcilj}
+    //                   - **Ukupna kalorijska vrednost po danu**: ${Math.round(
+    //                     data_.ukupnaKalVred
+    //                   )} kcal
+    //                   - **Preferirane (omiljene) namirnice**: ${
+    //                     data_.namirniceDa
+    //                   }
+    //                   - **Namirnice koje klijent želi da izbegne**: ${
+    //                     data_.voljeneNamirnice
+    //                   }
+    //                   - **Namirnice koje su potpuno zabranjene**: ${
+    //                     data_.namirnice
+    //                   }
+    //                   - **Dizajniraj kompletan **${brojDanaInt}**jelovnik koji detaljno pokriva svih ${obrociPrompt} obroka dnevno, sledeći navedene parametre i pravila za svaki dan."
+
+    //                   ### Pravila:
+
+    //                   Osnovno pravilo: Prvo saberi kalorije po sastojku. Zatim po obroku. Zatim po danu. Proveri odstupanje. Ako nije tačno, koriguj.
+
+    //                   1. **Osnova ishrane**:
+    //                     - Koristi stil ishrane definisan kao ${
+    //                       data_.selectedIshranaNaziv
+    //                     } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
+    //                     - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima  ${
+    //                       data_.namirnice
+    //                     } i ${data_.neVoljeneNamirnice}
+    //                     - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+
+    //                   2. **Upotreba omiljenih namirnica**:
+    //                     - Ako su neke namirnice iz ${
+    //                       data_.namirniceDa
+    //                     } , možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
+
+    //                   3. **Kalorijska raspodela po obrocima**:
+    //                     - Doručak: 25–30%
+    //                     - Ručak: 40–45%
+    //                     - Večera: 25–30%
+    //                     - Dozvoljeno odstupanje: ±2%
+
+    //                   4. **Format svakog obroka**:
+    //                     - Svaki obrok mora sadržati:
+    //                       - **Opis**
+    //                       - **Sastojke** (u gramima/ml)
+    //                       - **Instrukcije za pripremu**
+    //                       - **Kalorije**
+    //                       - **Nutritivnu vrednost**
+    //                       - **Makronutrijente** (brojčano)
+    //                     - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
+
+    //                   5. **Jezik**:
+    //                     - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
+
+    //                   6. **Logika kalorija**:
+    //                     - Na osnovu ${Math.round(
+    //                       data_.ukupnaKalVred
+    //                     )} kcal, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
+
+    //                   # 📊 Pravilo kontrole kalorija
+
+    //                   1. Počni od dnevnog kalorijskog cilja (npr. 2681 kcal).
+    //                   2. Podeli cilj po obrocima prema zadatim procentima.
+    //                   3. Za svaki obrok:
+    //                     - Planiraj sastojke i količine da zbir kalorija bude unutar ciljanog raspona (±1%).
+    //                     - Ako zbir nije tačan, koriguj količine namirnica dok ne postigneš cilj.
+    //                   4. Nakon svih obroka, proveri da li zbir celog dana odgovara ukupnom kalorijskom cilju (±1%).
+    //                   5. Ne završavaj dok sva odstupanja nisu u dozvoljenom rasponu.
+
+    //                   ---
+
+    //                   ### Primeri obroka u sledecem formatu:
+
+    //                   **Doručak**
+    //                   **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.
+    //                   **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema
+    //                   **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.
+    //                   **Kalorije**: 520 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g
+
+    //                   ---
+
+    //                   **Užina 1**
+    //                   **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.
+    //                   **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki
+    //                   **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.
+    //                   **Kalorije**: 180 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g
+
+    //                   ---
+
+    //                   **Ručak**
+    //                   **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.
+    //                   **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja
+    //                   **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.
+    //                   **Kalorije**: 860 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g
+
+    //                   ---
+
+    //                   **Užina 2**
+    //                   **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.
+    //                   **Sastojci**: 1 banana (120g), 15g kikiriki putera
+    //                   **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.
+    //                   **Kalorije**: 210 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g
+
+    //                   ---
+
+    //                   **Večera**
+    //                   **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.
+    //                   **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)
+    //                   **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.
+    //                   **Kalorije**: 620 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g
+
+    //                   ---
+
+    //                   ### Output:
+    //                   - Kompletan jelovnik za ${brojDanaInt} dana
+    //                   - Po ${obrociPrompt} obroka dnevno
+    //                   - Detaljno napisane instrukcije
+    //                   - Poštovanje stila ishrane + personalnih ograničenja korisnika
+    //                   - Generiši sve dane odjednom, osiguravajući da svaki obrok sledi pravila i kalorijske ciljeve.
+    //                   `;
+
+    let daniPredprompt_ = `Ti si licencirani nutricionista i planer obroka. Tvoj zadatak je da napraviš plan ishrane koji strogo poštuje broj kalorija, tačne količine namirnica i kalorijsku podelu po obrocima. Koristi isključivo poznate nutritivne vrednosti po 100g. Za svaki sastojak izračunaj kalorije na osnovu gramaže i zatim ih saberi da dobiješ tačnu kalorijsku vrednost po obroku.
+
+                            Plan može sadržati 3, 4 ili 5 obroka dnevno. Na osnovu broja obroka koristi sledeću raspodelu kalorija:
+
+                            **Ako dan ima 3 obroka (bez užina):**
+                            - Doručak: 30%  
+                            - Ručak: 40%  
+                            - Večera: 30%
+
+                            **Ako dan ima 4 obroka (sa jednom užinom):**
+                            - Doručak: 25%  
+                            - Užina 1: 10%  
+                            - Ručak: 35%  
+                            - Večera: 30%  
+
+                            **Ako dan ima 5 obroka (sa dve užine):**
+                            - Doručak: 25%  
+                            - Užina 1: 10%  
+                            - Ručak: 30%  
+                            - Užina 2: 10%
+                            - Večera: 25%  
 
 
-                      ### Pravila:
+                            Na osnovu unetog ukupnog dnevnog kalorijskog unosa, moraš automatski izračunati ciljani broj kalorija za svaki obrok prema procentualnoj raspodeli. Na primer: ako je dnevni cilj ${Math.round(
+                              data_.ukupnaKalVred
+                            )} kcal, a ručak je 30%, to znači ${Math.round(
+      Math.round(data_.ukupnaKalVred) * 0.3
+    )} kcal.
 
-                      Osnovno pravilo: Prvo saberi kalorije po sastojku. Zatim po obroku. Zatim po danu. Proveri odstupanje. Ako nije tačno, koriguj.
+                            Za svaki obrok, **saberi kalorije svih sastojaka i proveri da li zbir tačno odgovara ciljanom kalorijskom unosu**. Ako zbir nije tačan, **nemoj menjati cilj – prilagodi količine sastojaka i ponovo izračunaj dok ne dobiješ tačan zbir**.
 
-                      1. **Osnova ishrane**:
-                        - Koristi stil ishrane definisan kao ${
-                          data_.selectedIshranaNaziv
-                        } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
-                        - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima  ${
-                          data_.namirnice
-                        } i ${data_.neVoljeneNamirnice}
-                        - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+                            Na kraju dana, saberi kalorije iz svih obroka i proveri da li ukupni unos odgovara unetom dnevnom kalorijskom cilju (npr. ${Math.round(
+                              data_.ukupnaKalVred
+                            )} kcal).
 
-                      2. **Upotreba omiljenih namirnica**:
-                        - Ako su neke namirnice iz ${
-                          data_.namirniceDa
-                        } , možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
+                            **Ne koristi procene ili aproksimacije – koristi izračunate, proverene vrednosti.**  
+                            Tačnost je obavezna.
+    `;
 
-                      3. **Kalorijska raspodela po obrocima**:
-                        - Doručak: 25–30%
-                        - Ručak: 40–45%
-                        - Večera: 25–30%
-                        - Dozvoljeno odstupanje: ±2%
+    let brIzabranihDana = data_.ucestBr.split(",").map((r) => r.trim()).length;
 
-                      4. **Format svakog obroka**:
-                        - Svaki obrok mora sadržati:
-                          - **Opis**
-                          - **Sastojke** (u gramima/ml)
-                          - **Instrukcije za pripremu**
-                          - **Kalorije**
-                          - **Nutritivnu vrednost**
-                          - **Makronutrijente** (brojčano)
-                        - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
+    let daniPrmpt_ = ` Napravite ${
+      brIzabranihDana === 3 ? "trodevni" : "sedmodnevni"
+    } plan ishrane sa tačno ${brIzabranihDana} obroka dnevno: doručak, ručak i večera.
 
-                      5. **Jezik**:
-                        - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
+                    Cilj: ${data_.primcilj}.  
+                    Ukupan dnevni unos: **${Math.round(
+                      data_.ukupnaKalVred
+                    )} kcal**
 
-                      6. **Logika kalorija**:
-                        - Na osnovu ${Math.round(
-                          data_.ukupnaKalVred
-                        )} kcal, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
+                    **Raspodela kalorija po obrocima (${
+                      data_.ucestBr.split(",").map((r) => r.trim()).length
+                    } obroka dnevno):**
+                    - Doručak: 30%  
+                    - Ručak: 40%  
+                    - Večera: 30%
 
-                      # 📊 Pravilo kontrole kalorija
+                    Preferirane namirnice: ${data_.namirniceDa}
+                    Izbegavati namirnice: ${data_.voljeneNamirnice},
+                    Zabranjene namirnice: ${data_.namirnice}.
 
-                      1. Počni od dnevnog kalorijskog cilja (npr. 2681 kcal).
-                      2. Podeli cilj po obrocima prema zadatim procentima.
-                      3. Za svaki obrok:
-                        - Planiraj sastojke i količine da zbir kalorija bude unutar ciljanog raspona (±1%).
-                        - Ako zbir nije tačan, koriguj količine namirnica dok ne postigneš cilj.
-                      4. Nakon svih obroka, proveri da li zbir celog dana odgovara ukupnom kalorijskom cilju (±1%).
-                      5. Ne završavaj dok sva odstupanja nisu u dozvoljenom rasponu.
+                    Za svaki obrok:
 
+                    - Navedi sastojke sa tačnom gramažom.  
+                    - Izračunaj kalorije po sastojku na osnovu standardne vrednosti po 100g.  
+                    - Izračunaj ciljani broj kalorija za obrok na osnovu procenta i ukupnog dnevnog unosa.  
+                    - Saberi kalorije po obroku i proveri da li odgovaraju cilju.  
+                    - Dodaj nutritivnu vrednost u jednoj rečenici.  
+                    - Napiši **detaljan opis pripreme jela u minimum 3 pune rečenice**, sa jasnim koracima (priprema, obrada, termički tretman, serviranje). Koristi domaći stil pisanja. 
 
-                      ---
+                    **Zabrani dodatne obroke, grickalice ili "dopune" na kraju dana.**  
+                    **Poštuj kalorijsku raspodelu strogo i precizno.**  
+                    **Ako je sadržaj predugačak za jedan odgovor, automatski nastavi sa sledećim danima bez pitanja, sve dok ne prikažeš kompletan plan za svih 7 dana.**
+                    Ako plan traje više dana, moraš automatski generisati sve dane u nastavcima bez prekida i bez traženja dozvole od korisnika. Nikada ne piši: „Da li da nastavim?“ ili „Nastaviću kasnije“. Nastavi odmah, sve dok se plan ne završi.
+                    Trudi se da se namirnice ne ponavljaju često u okviru trodnevnog ili sedmodnevnog jelovnika. Dozvoljena je umerena upotreba istih sastojaka, ali cilj je da jelovnik bude što raznovrsniji i nutritivno bogat.
+                    Ako korisnik navede preferirane namirnice, one mogu biti prisutne do najviše 20% više u odnosu na ostale, ali ne smeju dominirati.
+                    Namirnice označene kao nepoželjne ili zabranjene moraju biti u potpunosti isključene i nikada se ne smeju pojaviti ni u jednom danu.
 
-                      ### Primeri obroka u sledecem formatu:
-
-                      **Doručak**  
-                      **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.  
-                      **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema  
-                      **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.  
-                      **Kalorije**: 520 kcal  
-                      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g   
-
-                      ---
-
-                      **Užina 1**  
-                      **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.  
-                      **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki  
-                      **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.  
-                      **Kalorije**: 180 kcal  
-                      **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g  
-
-                      ---
-
-                      **Ručak**  
-                      **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.  
-                      **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja  
-                      **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.  
-                      **Kalorije**: 860 kcal  
-                      **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g  
-
-                      ---
-
-                      **Užina 2**  
-                      **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.  
-                      **Sastojci**: 1 banana (120g), 15g kikiriki putera  
-                      **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.  
-                      **Kalorije**: 210 kcal  
-                      **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g  
-
-                      ---
-
-                      **Večera**  
-                      **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.  
-                      **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)  
-                      **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.  
-                      **Kalorije**: 620 kcal  
-                      **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g  
-
-                      ---
-
-                      ### Output:
-                      - Kompletan jelovnik za ${brojDanaInt} dana
-                      - Po ${obrociPrompt} obroka dnevno
-                      - Detaljno napisane instrukcije
-                      - Poštovanje stila ishrane + personalnih ograničenja korisnika
-                      - Generiši sve dane odjednom, osiguravajući da svaki obrok sledi pravila i kalorijske ciljeve.
-                      `;
+                    `;
 
     const completion = await client.beta.chat.completions.parse({
       model: "gpt-4o-2024-08-06",
@@ -4415,6 +4508,9 @@ app.use("/test2", async (req, res) => {
           content: daniPrmpt_,
         },
       ],
+      temperature: 0.2,
+      max_tokens: 10000,
+      top_p: 1.0,
       response_format: zodResponseFormat(FullWeekSchema, "mealPlan"),
     });
 
@@ -6347,6 +6443,8 @@ app.get("/getUserData/:id", async (req, res) => {
       return res.status(400).json({ message: "Nije nadjen korisnik" });
     }
 
+    //naziv_paketa: 'Starter'
+    //status_placanja: 'Plaćeno'
     const paket = await Paket.findOne({
       idUser: id,
       status: "Aktivan",
@@ -10162,754 +10260,754 @@ const transporter = nodemailer.createTransport({
 });
 
 //Mail 1 za slanje korisniku koji sa prvim Starter paketom - Sutradan kad se prvi put prijavi
-cron.schedule("0 9 * * *", async () => {
-  console.log(`[CRON] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+// cron.schedule("0 9 * * *", async () => {
+//   console.log(`[CRON] Pokretanje u 9h - ${new Date().toLocaleString()}`);
 
-  try {
-    // Pronađi sve aktivne pakete
-    const aktivniPaketi = await Paket.find({ status: "Aktivan" });
+//   try {
+//     // Pronađi sve aktivne pakete
+//     const aktivniPaketi = await Paket.find({ status: "Aktivan" });
 
-    // Grupisanje po korisniku
-    const korisnikPaketiMap = new Map();
+//     // Grupisanje po korisniku
+//     const korisnikPaketiMap = new Map();
 
-    for (const paket of aktivniPaketi) {
-      if (!korisnikPaketiMap.has(paket.idUser)) {
-        korisnikPaketiMap.set(paket.idUser, []);
-      }
-      korisnikPaketiMap.get(paket.idUser).push(paket);
-    }
+//     for (const paket of aktivniPaketi) {
+//       if (!korisnikPaketiMap.has(paket.idUser)) {
+//         korisnikPaketiMap.set(paket.idUser, []);
+//       }
+//       korisnikPaketiMap.get(paket.idUser).push(paket);
+//     }
 
-    // Obrada korisnika
-    for (const [idUser, paketi] of korisnikPaketiMap.entries()) {
-      if (paketi.length === 1 && paketi[0].naziv_paketa === "Starter") {
-        const user = await User.findById(idUser);
+//     // Obrada korisnika
+//     for (const [idUser, paketi] of korisnikPaketiMap.entries()) {
+//       if (paketi.length === 1 && paketi[0].naziv_paketa === "Starter") {
+//         const user = await User.findById(idUser);
 
-        if (user && user.wellcome === "1" && user.isVerified === true) {
-          await transporter.sendMail({
-            from: "office@nutritrans.com",
-            to: user.mail,
-            subject: "Dobrodošli!",
-            html: `
-            <!DOCTYPE html>
-              <html lang="sr">
-              <head>
-                  <meta charset="UTF-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <title>Tvoje telo ne traži savršenstvo. Samo prisustvo.</title>
-                  <style>
-                      body {
-                          font-family: 'Arial', sans-serif;
-                          background-color: #f5f5f5;
-                          margin: 0;
-                          padding: 0;
-                          color: #444444;
-                      }
-                      .email-container {
-                          width: 100%;
-                          background-color: #ffffff;
-                          max-width: 600px;
-                          margin: 0 auto;
-                          padding: 40px;
-                          box-sizing: border-box;
-                          border-radius: 10px;
-                          box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-                      }
-                      .email-header {
-                          text-align: center;
-                          margin-bottom: 30px;
-                      }
-                      .email-header img {
-                          width: 80%;
-                          max-width: 500px;
-                          border-radius: 8px;
-                      }
-                      h1 {
-                          color: #2d9d8b;
-                          font-size: 28px;
-                          margin-bottom: 15px;
-                          text-align: center;
-                          font-weight: bold;
-                      }
-                      p {
-                          color: #555555;
-                          font-size: 16px;
-                          line-height: 1.7;
-                          margin-bottom: 20px;
-                      }
-                      .cta-button {
-                          display: inline-block;
-                          padding: 15px 30px;
-                          background-color: #2d9d8b;
-                          color: white;
-                          text-decoration: none;
-                          font-size: 18px;
-                          font-weight: bold;
-                          border-radius: 5px;
-                          margin-top: 20px;
-                          text-align: center;
-                          transition: background-color 0.3s;
-                      }
-                      .cta-button:hover {
-                          background-color: #1f7d6a;
-                      }
-                      .footer {
-                          text-align: center;
-                          color: #888888;
-                          font-size: 12px;
-                          margin-top: 40px;
-                      }
-                      .footer a {
-                          color: #2d9d8b;
-                          text-decoration: none;
-                      }
-                  </style>
-              </head>
-              <body>
-                  <div class="email-container">
-                      <div class="email-header">
-                          <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
-                      </div>
-                      <h1>Tvoje telo ne traži savršenstvo. Samo prisustvo.</h1>
-                      <p>Zdravo 🌱</p>
-                      <p>Hvala ti što si napravio prvi korak. Znam da nije mali.</p>
-                      <p>U vremenu kada se zdravlje pretvara u pritisak, dijetu, izazov, rezultat – ti si odlučio da napraviš prostor. Za sebe.</p>
-                      <p>NutriTrans nije još jedan plan. To je mesto gde tvoje navike, misli, emocije i telo… mogu konačno da sarađuju.</p>
-                      <p>Možeš odmah da testiraš kako to izgleda – prvi izveštaj možeš napraviti besplatno. Popuni svih 7 polja i klikni na dugme NT – dobićeš svoj prvi lični uvid.</p>
-                      <p>To nije rezultat. To je početak razumevanja.</p>
-                      <p>Nema trke. Nema savršenstva. Imaš pravo da počneš od mesta na kom jesi. I da ideš svojim ritmom.</p>
-                      <p>Mi smo tu – da slušamo, ne da komandujemo.</p>
-                      <p>Dobro došao.</p>
-                      <div class="footer">
-                          <p>Toplo, <br> NutriTrans tim</p>
-                          <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
-                      </div>
-                  </div>
-              </body>
-              </html>`,
-          });
+//         if (user && user.wellcome === "1" && user.isVerified === true) {
+//           await transporter.sendMail({
+//             from: "office@nutritrans.com",
+//             to: user.mail,
+//             subject: "Dobrodošli!",
+//             html: `
+//             <!DOCTYPE html>
+//               <html lang="sr">
+//               <head>
+//                   <meta charset="UTF-8">
+//                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//                   <title>Tvoje telo ne traži savršenstvo. Samo prisustvo.</title>
+//                   <style>
+//                       body {
+//                           font-family: 'Arial', sans-serif;
+//                           background-color: #f5f5f5;
+//                           margin: 0;
+//                           padding: 0;
+//                           color: #444444;
+//                       }
+//                       .email-container {
+//                           width: 100%;
+//                           background-color: #ffffff;
+//                           max-width: 600px;
+//                           margin: 0 auto;
+//                           padding: 40px;
+//                           box-sizing: border-box;
+//                           border-radius: 10px;
+//                           box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+//                       }
+//                       .email-header {
+//                           text-align: center;
+//                           margin-bottom: 30px;
+//                       }
+//                       .email-header img {
+//                           width: 80%;
+//                           max-width: 500px;
+//                           border-radius: 8px;
+//                       }
+//                       h1 {
+//                           color: #2d9d8b;
+//                           font-size: 28px;
+//                           margin-bottom: 15px;
+//                           text-align: center;
+//                           font-weight: bold;
+//                       }
+//                       p {
+//                           color: #555555;
+//                           font-size: 16px;
+//                           line-height: 1.7;
+//                           margin-bottom: 20px;
+//                       }
+//                       .cta-button {
+//                           display: inline-block;
+//                           padding: 15px 30px;
+//                           background-color: #2d9d8b;
+//                           color: white;
+//                           text-decoration: none;
+//                           font-size: 18px;
+//                           font-weight: bold;
+//                           border-radius: 5px;
+//                           margin-top: 20px;
+//                           text-align: center;
+//                           transition: background-color 0.3s;
+//                       }
+//                       .cta-button:hover {
+//                           background-color: #1f7d6a;
+//                       }
+//                       .footer {
+//                           text-align: center;
+//                           color: #888888;
+//                           font-size: 12px;
+//                           margin-top: 40px;
+//                       }
+//                       .footer a {
+//                           color: #2d9d8b;
+//                           text-decoration: none;
+//                       }
+//                   </style>
+//               </head>
+//               <body>
+//                   <div class="email-container">
+//                       <div class="email-header">
+//                           <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+//                       </div>
+//                       <h1>Tvoje telo ne traži savršenstvo. Samo prisustvo.</h1>
+//                       <p>Zdravo 🌱</p>
+//                       <p>Hvala ti što si napravio prvi korak. Znam da nije mali.</p>
+//                       <p>U vremenu kada se zdravlje pretvara u pritisak, dijetu, izazov, rezultat – ti si odlučio da napraviš prostor. Za sebe.</p>
+//                       <p>NutriTrans nije još jedan plan. To je mesto gde tvoje navike, misli, emocije i telo… mogu konačno da sarađuju.</p>
+//                       <p>Možeš odmah da testiraš kako to izgleda – prvi izveštaj možeš napraviti besplatno. Popuni svih 7 polja i klikni na dugme NT – dobićeš svoj prvi lični uvid.</p>
+//                       <p>To nije rezultat. To je početak razumevanja.</p>
+//                       <p>Nema trke. Nema savršenstva. Imaš pravo da počneš od mesta na kom jesi. I da ideš svojim ritmom.</p>
+//                       <p>Mi smo tu – da slušamo, ne da komandujemo.</p>
+//                       <p>Dobro došao.</p>
+//                       <div class="footer">
+//                           <p>Toplo, <br> NutriTrans tim</p>
+//                           <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+//                       </div>
+//                   </div>
+//               </body>
+//               </html>`,
+//           });
 
-          console.log(`✅ Email poslat korisniku: ${user.mail}`);
-        }
-      }
-    }
+//           console.log(`✅ Email poslat korisniku: ${user.mail}`);
+//         }
+//       }
+//     }
 
-    console.log("[CRON] Završena obrada.");
-  } catch (err) {
-    console.error("[CRON] Greška u cron jobu:", err);
-  }
-});
+//     console.log("[CRON] Završena obrada.");
+//   } catch (err) {
+//     console.error("[CRON] Greška u cron jobu:", err);
+//   }
+// });
 
 //Mail 2 za slanje korisniku koji sa prvim Starter paketom - 3 dana posle prve prijave
-cron.schedule("0 9 * * *", async () => {
-  console.log(`[CRON-3days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+// cron.schedule("0 9 * * *", async () => {
+//   console.log(`[CRON-3days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
 
-  try {
-    // Izračunaj datum 3 dana unazad (samo dan i datum, bez vremena)
-    const danas = new Date();
-    const preTriDana = new Date();
-    preTriDana.setDate(danas.getDate() - 3);
+//   try {
+//     // Izračunaj datum 3 dana unazad (samo dan i datum, bez vremena)
+//     const danas = new Date();
+//     const preTriDana = new Date();
+//     preTriDana.setDate(danas.getDate() - 3);
 
-    // Očistimo vreme za tačno poređenje po danu
-    preTriDana.setHours(0, 0, 0, 0);
-    const krajDana = new Date(preTriDana);
-    krajDana.setHours(23, 59, 59, 999);
+//     // Očistimo vreme za tačno poređenje po danu
+//     preTriDana.setHours(0, 0, 0, 0);
+//     const krajDana = new Date(preTriDana);
+//     krajDana.setHours(23, 59, 59, 999);
 
-    // Pronađi sve "Starter" pakete kreirane pre tačno 3 dana
-    const paketi = await Paket.find({
-      status: "Aktivan",
-      naziv_paketa: "Starter",
-      datum_kreiranja: {
-        $gte: preTriDana,
-        $lte: krajDana,
-      },
-    });
+//     // Pronađi sve "Starter" pakete kreirane pre tačno 3 dana
+//     const paketi = await Paket.find({
+//       status: "Aktivan",
+//       naziv_paketa: "Starter",
+//       datum_kreiranja: {
+//         $gte: preTriDana,
+//         $lte: krajDana,
+//       },
+//     });
 
-    for (const paket of paketi) {
-      // Proveri da li korisnik ima samo taj jedan aktivan paket
-      const aktivniPaketiUsera = await Paket.find({
-        idUser: paket.idUser,
-        status: "Aktivan",
-      });
+//     for (const paket of paketi) {
+//       // Proveri da li korisnik ima samo taj jedan aktivan paket
+//       const aktivniPaketiUsera = await Paket.find({
+//         idUser: paket.idUser,
+//         status: "Aktivan",
+//       });
 
-      if (aktivniPaketiUsera.length === 1) {
-        const user = await User.findById(paket.idUser);
+//       if (aktivniPaketiUsera.length === 1) {
+//         const user = await User.findById(paket.idUser);
 
-        if (user && user.wellcome === "1" && user.isVerified === true) {
-          await transporter.sendMail({
-            from: "office@nutritrans.com",
-            to: user.mail,
-            subject: "3 dana si sa nama 🎉",
-            html: `
-              <!DOCTYPE html>
-                <html lang="sr">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Zašto ništa nije 'problem u tebi'</title>
-                    <style>
-                        body {
-                            font-family: 'Arial', sans-serif;
-                            background-color: #f5f5f5;
-                            margin: 0;
-                            padding: 0;
-                            color: #444444;
-                        }
-                        .email-container {
-                            width: 100%;
-                            background-color: #ffffff;
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 40px;
-                            box-sizing: border-box;
-                            border-radius: 10px;
-                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-                        }
-                        .email-header {
-                            text-align: center;
-                            margin-bottom: 30px;
-                        }
-                        .email-header img {
-                            width: 80%;
-                            max-width: 500px;
-                            border-radius: 8px;
-                        }
-                        h1 {
-                            color: #2d9d8b;
-                            font-size: 28px;
-                            margin-bottom: 15px;
-                            text-align: center;
-                            font-weight: bold;
-                        }
-                        p {
-                            color: #555555;
-                            font-size: 16px;
-                            line-height: 1.7;
-                            margin-bottom: 20px;
-                        }
-                        .cta-button {
-                            display: inline-block;
-                            padding: 15px 30px;
-                            background-color: #2d9d8b;
-                            color: white;
-                            text-decoration: none;
-                            font-size: 18px;
-                            font-weight: bold;
-                            border-radius: 5px;
-                            margin-top: 20px;
-                            text-align: center;
-                            transition: background-color 0.3s;
-                        }
-                        .cta-button:hover {
-                            background-color: #1f7d6a;
-                        }
-                        .footer {
-                            text-align: center;
-                            color: #888888;
-                            font-size: 12px;
-                            margin-top: 40px;
-                        }
-                        .footer a {
-                            color: #2d9d8b;
-                            text-decoration: none;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="email-container">
-                        <div class="email-header">
-                            <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
-                        </div>
-                        <h1>Zašto ništa nije 'problem u tebi'</h1>
-                        <p>Hej 👋</p>
-                        <p>Znaš ono kad znaš šta bi trebalo, ali jednostavno – ne možeš da se pokreneš? I onda se pojavi osećaj… krivice?</p>
-                        <p>To nije lenjost. Nije slabost. Nisi ti problem.</p>
-                        <p>To je umor od toga da stalno počinješ ispočetka bez pravog sistema, bez podrške i bez razumevanja.</p>
-                        <p>U NutriTrans-u to želimo da promenimo. Nećemo ti reći “uradi ovo”. Prvo ćemo te pitati – “Kako si?”</p>
-                        <p>Ako se prepoznaješ u ovome, znaj da nisi sam. I da postoji način koji ne boli.</p>
-                        <p>Tu smo.</p>
-                        <p>NutriTrans</p>
-                        <div class="footer">
-                            <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `,
-          });
+//         if (user && user.wellcome === "1" && user.isVerified === true) {
+//           await transporter.sendMail({
+//             from: "office@nutritrans.com",
+//             to: user.mail,
+//             subject: "3 dana si sa nama 🎉",
+//             html: `
+//               <!DOCTYPE html>
+//                 <html lang="sr">
+//                 <head>
+//                     <meta charset="UTF-8">
+//                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//                     <title>Zašto ništa nije 'problem u tebi'</title>
+//                     <style>
+//                         body {
+//                             font-family: 'Arial', sans-serif;
+//                             background-color: #f5f5f5;
+//                             margin: 0;
+//                             padding: 0;
+//                             color: #444444;
+//                         }
+//                         .email-container {
+//                             width: 100%;
+//                             background-color: #ffffff;
+//                             max-width: 600px;
+//                             margin: 0 auto;
+//                             padding: 40px;
+//                             box-sizing: border-box;
+//                             border-radius: 10px;
+//                             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+//                         }
+//                         .email-header {
+//                             text-align: center;
+//                             margin-bottom: 30px;
+//                         }
+//                         .email-header img {
+//                             width: 80%;
+//                             max-width: 500px;
+//                             border-radius: 8px;
+//                         }
+//                         h1 {
+//                             color: #2d9d8b;
+//                             font-size: 28px;
+//                             margin-bottom: 15px;
+//                             text-align: center;
+//                             font-weight: bold;
+//                         }
+//                         p {
+//                             color: #555555;
+//                             font-size: 16px;
+//                             line-height: 1.7;
+//                             margin-bottom: 20px;
+//                         }
+//                         .cta-button {
+//                             display: inline-block;
+//                             padding: 15px 30px;
+//                             background-color: #2d9d8b;
+//                             color: white;
+//                             text-decoration: none;
+//                             font-size: 18px;
+//                             font-weight: bold;
+//                             border-radius: 5px;
+//                             margin-top: 20px;
+//                             text-align: center;
+//                             transition: background-color 0.3s;
+//                         }
+//                         .cta-button:hover {
+//                             background-color: #1f7d6a;
+//                         }
+//                         .footer {
+//                             text-align: center;
+//                             color: #888888;
+//                             font-size: 12px;
+//                             margin-top: 40px;
+//                         }
+//                         .footer a {
+//                             color: #2d9d8b;
+//                             text-decoration: none;
+//                         }
+//                     </style>
+//                 </head>
+//                 <body>
+//                     <div class="email-container">
+//                         <div class="email-header">
+//                             <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+//                         </div>
+//                         <h1>Zašto ništa nije 'problem u tebi'</h1>
+//                         <p>Hej 👋</p>
+//                         <p>Znaš ono kad znaš šta bi trebalo, ali jednostavno – ne možeš da se pokreneš? I onda se pojavi osećaj… krivice?</p>
+//                         <p>To nije lenjost. Nije slabost. Nisi ti problem.</p>
+//                         <p>To je umor od toga da stalno počinješ ispočetka bez pravog sistema, bez podrške i bez razumevanja.</p>
+//                         <p>U NutriTrans-u to želimo da promenimo. Nećemo ti reći “uradi ovo”. Prvo ćemo te pitati – “Kako si?”</p>
+//                         <p>Ako se prepoznaješ u ovome, znaj da nisi sam. I da postoji način koji ne boli.</p>
+//                         <p>Tu smo.</p>
+//                         <p>NutriTrans</p>
+//                         <div class="footer">
+//                             <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+//                         </div>
+//                     </div>
+//                 </body>
+//                 </html>
+//             `,
+//           });
 
-          console.log(`✅ [3days] Email poslat korisniku: ${user.mail}`);
-        }
-      }
-    }
+//           console.log(`✅ [3days] Email poslat korisniku: ${user.mail}`);
+//         }
+//       }
+//     }
 
-    console.log("[CRON-3days] Završena obrada.");
-  } catch (err) {
-    console.error("[CRON-3days] Greška u cron jobu:", err);
-  }
-});
+//     console.log("[CRON-3days] Završena obrada.");
+//   } catch (err) {
+//     console.error("[CRON-3days] Greška u cron jobu:", err);
+//   }
+// });
 
 //Mail 3 za slanje korisniku koji sa prvim Starter paketom - 5 dana posle prve prijave
-cron.schedule("0 9 * * *", async () => {
-  console.log(`[CRON-5days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+// cron.schedule("0 9 * * *", async () => {
+//   console.log(`[CRON-5days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
 
-  try {
-    const danas = new Date();
-    const prePetDana = new Date();
-    prePetDana.setDate(danas.getDate() - 5);
+//   try {
+//     const danas = new Date();
+//     const prePetDana = new Date();
+//     prePetDana.setDate(danas.getDate() - 5);
 
-    prePetDana.setHours(0, 0, 0, 0);
-    const krajDana = new Date(prePetDana);
-    krajDana.setHours(23, 59, 59, 999);
+//     prePetDana.setHours(0, 0, 0, 0);
+//     const krajDana = new Date(prePetDana);
+//     krajDana.setHours(23, 59, 59, 999);
 
-    const paketi = await Paket.find({
-      status: "Aktivan",
-      naziv_paketa: "Starter",
-      datum_kreiranja: {
-        $gte: prePetDana,
-        $lte: krajDana,
-      },
-    });
+//     const paketi = await Paket.find({
+//       status: "Aktivan",
+//       naziv_paketa: "Starter",
+//       datum_kreiranja: {
+//         $gte: prePetDana,
+//         $lte: krajDana,
+//       },
+//     });
 
-    for (const paket of paketi) {
-      const aktivniPaketiUsera = await Paket.find({
-        idUser: paket.idUser,
-        status: "Aktivan",
-      });
+//     for (const paket of paketi) {
+//       const aktivniPaketiUsera = await Paket.find({
+//         idUser: paket.idUser,
+//         status: "Aktivan",
+//       });
 
-      if (aktivniPaketiUsera.length === 1) {
-        const user = await User.findById(paket.idUser);
+//       if (aktivniPaketiUsera.length === 1) {
+//         const user = await User.findById(paket.idUser);
 
-        if (user && user.wellcome === "1" && user.isVerified === true) {
-          await transporter.sendMail({
-            from: "office@nutritrans.com",
-            to: user.mail,
-            subject: "Prošlo je 5 dana – kako ti ide?",
-            html: `
-              <!DOCTYPE html>
-                <html lang="sr">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Šta ako zdravlje ne treba da boli?</title>
-                    <style>
-                        body {
-                            font-family: 'Arial', sans-serif;
-                            background-color: #f5f5f5;
-                            margin: 0;
-                            padding: 0;
-                            color: #444444;
-                        }
-                        .email-container {
-                            width: 100%;
-                            background-color: #ffffff;
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 40px;
-                            box-sizing: border-box;
-                            border-radius: 10px;
-                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-                        }
-                        .email-header {
-                            text-align: center;
-                            margin-bottom: 30px;
-                        }
-                        .email-header img {
-                            width: 80%;
-                            max-width: 500px;
-                            border-radius: 8px;
-                        }
-                        h1 {
-                            color: #2d9d8b;
-                            font-size: 28px;
-                            margin-bottom: 15px;
-                            text-align: center;
-                            font-weight: bold;
-                        }
-                        p {
-                            color: #555555;
-                            font-size: 16px;
-                            line-height: 1.7;
-                            margin-bottom: 20px;
-                        }
-                        .cta-button {
-                            display: inline-block;
-                            padding: 15px 30px;
-                            background-color: #2d9d8b;
-                            color: white;
-                            text-decoration: none;
-                            font-size: 18px;
-                            font-weight: bold;
-                            border-radius: 5px;
-                            margin-top: 20px;
-                            text-align: center;
-                            transition: background-color 0.3s;
-                        }
-                        .cta-button:hover {
-                            background-color: #1f7d6a;
-                        }
-                        .footer {
-                            text-align: center;
-                            color: #888888;
-                            font-size: 12px;
-                            margin-top: 40px;
-                        }
-                        .footer a {
-                            color: #2d9d8b;
-                            text-decoration: none;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="email-container">
-                        <div class="email-header">
-                            <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
-                        </div>
-                        <h1>Šta ako zdravlje ne treba da boli?</h1>
-                        <p>Ovo nije priča o nekom ko je skinuo 20kg.</p>
-                        <p>Ovo je priča o osobi koja je, prvi put, sela i iskreno popunila svoj dnevnik u NutriTrans aplikaciji.</p>
-                        <p>Nije ništa menjala prvi dan. Samo je gledala. Pratila. Razumela.</p>
-                        <p>I već tada… došlo je olakšanje.</p>
-                        <p>Zato što zdravlje nije počelo kad je prestala da jede slatkiše. Počelo je kad je prestala da se bori protiv sebe.</p>
-                        <p>Zdravlje je odnos. I odnos se gradi. Korak po korak.</p>
-                        <p>Ti ne moraš da se menjaš da bi počeo. Treba ti samo mesto koje te ne osuđuje. I vodi.</p>
-                        <p>NutriTrans je baš to.</p>
-                        <div class="footer">
-                            <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `,
-          });
+//         if (user && user.wellcome === "1" && user.isVerified === true) {
+//           await transporter.sendMail({
+//             from: "office@nutritrans.com",
+//             to: user.mail,
+//             subject: "Prošlo je 5 dana – kako ti ide?",
+//             html: `
+//               <!DOCTYPE html>
+//                 <html lang="sr">
+//                 <head>
+//                     <meta charset="UTF-8">
+//                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//                     <title>Šta ako zdravlje ne treba da boli?</title>
+//                     <style>
+//                         body {
+//                             font-family: 'Arial', sans-serif;
+//                             background-color: #f5f5f5;
+//                             margin: 0;
+//                             padding: 0;
+//                             color: #444444;
+//                         }
+//                         .email-container {
+//                             width: 100%;
+//                             background-color: #ffffff;
+//                             max-width: 600px;
+//                             margin: 0 auto;
+//                             padding: 40px;
+//                             box-sizing: border-box;
+//                             border-radius: 10px;
+//                             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+//                         }
+//                         .email-header {
+//                             text-align: center;
+//                             margin-bottom: 30px;
+//                         }
+//                         .email-header img {
+//                             width: 80%;
+//                             max-width: 500px;
+//                             border-radius: 8px;
+//                         }
+//                         h1 {
+//                             color: #2d9d8b;
+//                             font-size: 28px;
+//                             margin-bottom: 15px;
+//                             text-align: center;
+//                             font-weight: bold;
+//                         }
+//                         p {
+//                             color: #555555;
+//                             font-size: 16px;
+//                             line-height: 1.7;
+//                             margin-bottom: 20px;
+//                         }
+//                         .cta-button {
+//                             display: inline-block;
+//                             padding: 15px 30px;
+//                             background-color: #2d9d8b;
+//                             color: white;
+//                             text-decoration: none;
+//                             font-size: 18px;
+//                             font-weight: bold;
+//                             border-radius: 5px;
+//                             margin-top: 20px;
+//                             text-align: center;
+//                             transition: background-color 0.3s;
+//                         }
+//                         .cta-button:hover {
+//                             background-color: #1f7d6a;
+//                         }
+//                         .footer {
+//                             text-align: center;
+//                             color: #888888;
+//                             font-size: 12px;
+//                             margin-top: 40px;
+//                         }
+//                         .footer a {
+//                             color: #2d9d8b;
+//                             text-decoration: none;
+//                         }
+//                     </style>
+//                 </head>
+//                 <body>
+//                     <div class="email-container">
+//                         <div class="email-header">
+//                             <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+//                         </div>
+//                         <h1>Šta ako zdravlje ne treba da boli?</h1>
+//                         <p>Ovo nije priča o nekom ko je skinuo 20kg.</p>
+//                         <p>Ovo je priča o osobi koja je, prvi put, sela i iskreno popunila svoj dnevnik u NutriTrans aplikaciji.</p>
+//                         <p>Nije ništa menjala prvi dan. Samo je gledala. Pratila. Razumela.</p>
+//                         <p>I već tada… došlo je olakšanje.</p>
+//                         <p>Zato što zdravlje nije počelo kad je prestala da jede slatkiše. Počelo je kad je prestala da se bori protiv sebe.</p>
+//                         <p>Zdravlje je odnos. I odnos se gradi. Korak po korak.</p>
+//                         <p>Ti ne moraš da se menjaš da bi počeo. Treba ti samo mesto koje te ne osuđuje. I vodi.</p>
+//                         <p>NutriTrans je baš to.</p>
+//                         <div class="footer">
+//                             <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+//                         </div>
+//                     </div>
+//                 </body>
+//                 </html>
+//             `,
+//           });
 
-          console.log(`✅ [5days] Email poslat korisniku: ${user.mail}`);
-        }
-      }
-    }
+//           console.log(`✅ [5days] Email poslat korisniku: ${user.mail}`);
+//         }
+//       }
+//     }
 
-    console.log("[CRON-5days] Završena obrada.");
-  } catch (err) {
-    console.error("[CRON-5days] Greška u cron jobu:", err);
-  }
-});
+//     console.log("[CRON-5days] Završena obrada.");
+//   } catch (err) {
+//     console.error("[CRON-5days] Greška u cron jobu:", err);
+//   }
+// });
 
 //Mail 4 za slanje korisniku koji sa prvim Starter paketom - 7 dana posle prve prijave
-cron.schedule("0 9 * * *", async () => {
-  console.log(`[CRON-7days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+// cron.schedule("0 9 * * *", async () => {
+//   console.log(`[CRON-7days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
 
-  try {
-    const danas = new Date();
-    const preSedamDana = new Date();
-    preSedamDana.setDate(danas.getDate() - 7);
+//   try {
+//     const danas = new Date();
+//     const preSedamDana = new Date();
+//     preSedamDana.setDate(danas.getDate() - 7);
 
-    preSedamDana.setHours(0, 0, 0, 0);
-    const krajDana = new Date(preSedamDana);
-    krajDana.setHours(23, 59, 59, 999);
+//     preSedamDana.setHours(0, 0, 0, 0);
+//     const krajDana = new Date(preSedamDana);
+//     krajDana.setHours(23, 59, 59, 999);
 
-    const paketi = await Paket.find({
-      status: "Aktivan",
-      naziv_paketa: "Starter",
-      datum_kreiranja: {
-        $gte: preSedamDana,
-        $lte: krajDana,
-      },
-    });
+//     const paketi = await Paket.find({
+//       status: "Aktivan",
+//       naziv_paketa: "Starter",
+//       datum_kreiranja: {
+//         $gte: preSedamDana,
+//         $lte: krajDana,
+//       },
+//     });
 
-    for (const paket of paketi) {
-      const aktivniPaketiUsera = await Paket.find({
-        idUser: paket.idUser,
-        status: "Aktivan",
-      });
+//     for (const paket of paketi) {
+//       const aktivniPaketiUsera = await Paket.find({
+//         idUser: paket.idUser,
+//         status: "Aktivan",
+//       });
 
-      if (aktivniPaketiUsera.length === 1) {
-        const user = await User.findById(paket.idUser);
+//       if (aktivniPaketiUsera.length === 1) {
+//         const user = await User.findById(paket.idUser);
 
-        if (user && user.wellcome === "1" && user.isVerified === true) {
-          await transporter.sendMail({
-            from: "office@nutritrans.com",
-            to: user.mail,
-            subject: "7 dana si sa nama – vreme za sledeći korak?",
-            html: `
-              <!DOCTYPE html>
-                <html lang="sr">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Kad si spreman – mi smo tu.</title>
-                    <style>
-                        body {
-                            font-family: 'Arial', sans-serif;
-                            background-color: #f5f5f5;
-                            margin: 0;
-                            padding: 0;
-                            color: #444444;
-                        }
-                        .email-container {
-                            width: 100%;
-                            background-color: #ffffff;
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 40px;
-                            box-sizing: border-box;
-                            border-radius: 10px;
-                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-                        }
-                        .email-header {
-                            text-align: center;
-                            margin-bottom: 30px;
-                        }
-                        .email-header img {
-                            width: 80%;
-                            max-width: 500px;
-                            border-radius: 8px;
-                        }
-                        h1 {
-                            color: #2d9d8b;
-                            font-size: 28px;
-                            margin-bottom: 15px;
-                            text-align: center;
-                            font-weight: bold;
-                        }
-                        p {
-                            color: #555555;
-                            font-size: 16px;
-                            line-height: 1.7;
-                            margin-bottom: 20px;
-                        }
-                        .cta-button {
-                            display: inline-block;
-                            padding: 15px 30px;
-                            background-color: #2d9d8b;
-                            color: white;
-                            text-decoration: none;
-                            font-size: 18px;
-                            font-weight: bold;
-                            border-radius: 5px;
-                            margin-top: 20px;
-                            text-align: center;
-                            transition: background-color 0.3s;
-                        }
-                        .cta-button:hover {
-                            background-color: #1f7d6a;
-                        }
-                        .footer {
-                            text-align: center;
-                            color: #888888;
-                            font-size: 12px;
-                            margin-top: 40px;
-                        }
-                        .footer a {
-                            color: #2d9d8b;
-                            text-decoration: none;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="email-container">
-                        <div class="email-header">
-                            <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
-                        </div>
-                        <h1>Kad si spreman – mi smo tu.</h1>
-                        <p>Neću ti reći da “sad moraš da kreneš”. Možda ti još treba malo vremena. Možda ti treba još koji znak.</p>
-                        <p>Ali ako ti je dosta:</p>
-                        <ul>
-                            <li>počinjanja ponedeljkom</li>
-                            <li>praznih aplikacija koje ti ne daju odgovore</li>
-                            <li>osećaja da si sam u ovome</li>
-                        </ul>
-                        <p>…onda znaj da postoji način koji ne traži savršenstvo.</p>
-                        <p>U NutriTrans-u si vođen, ali slobodan. I sve što trebaš da uradiš je da odlučiš: <strong>“Želim da budem uz sebe.”</strong></p>
-                        <p>Kad klikneš “pretplata” – ne ulaziš u sistem. Ulaziš u proces. I nisi sam.</p>
-                        <p>Tu smo. Kad god ti budeš spreman.</p>
-                        <p>NutriTrans</p>
-                        <div class="footer">
-                            <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `,
-          });
+//         if (user && user.wellcome === "1" && user.isVerified === true) {
+//           await transporter.sendMail({
+//             from: "office@nutritrans.com",
+//             to: user.mail,
+//             subject: "7 dana si sa nama – vreme za sledeći korak?",
+//             html: `
+//               <!DOCTYPE html>
+//                 <html lang="sr">
+//                 <head>
+//                     <meta charset="UTF-8">
+//                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//                     <title>Kad si spreman – mi smo tu.</title>
+//                     <style>
+//                         body {
+//                             font-family: 'Arial', sans-serif;
+//                             background-color: #f5f5f5;
+//                             margin: 0;
+//                             padding: 0;
+//                             color: #444444;
+//                         }
+//                         .email-container {
+//                             width: 100%;
+//                             background-color: #ffffff;
+//                             max-width: 600px;
+//                             margin: 0 auto;
+//                             padding: 40px;
+//                             box-sizing: border-box;
+//                             border-radius: 10px;
+//                             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+//                         }
+//                         .email-header {
+//                             text-align: center;
+//                             margin-bottom: 30px;
+//                         }
+//                         .email-header img {
+//                             width: 80%;
+//                             max-width: 500px;
+//                             border-radius: 8px;
+//                         }
+//                         h1 {
+//                             color: #2d9d8b;
+//                             font-size: 28px;
+//                             margin-bottom: 15px;
+//                             text-align: center;
+//                             font-weight: bold;
+//                         }
+//                         p {
+//                             color: #555555;
+//                             font-size: 16px;
+//                             line-height: 1.7;
+//                             margin-bottom: 20px;
+//                         }
+//                         .cta-button {
+//                             display: inline-block;
+//                             padding: 15px 30px;
+//                             background-color: #2d9d8b;
+//                             color: white;
+//                             text-decoration: none;
+//                             font-size: 18px;
+//                             font-weight: bold;
+//                             border-radius: 5px;
+//                             margin-top: 20px;
+//                             text-align: center;
+//                             transition: background-color 0.3s;
+//                         }
+//                         .cta-button:hover {
+//                             background-color: #1f7d6a;
+//                         }
+//                         .footer {
+//                             text-align: center;
+//                             color: #888888;
+//                             font-size: 12px;
+//                             margin-top: 40px;
+//                         }
+//                         .footer a {
+//                             color: #2d9d8b;
+//                             text-decoration: none;
+//                         }
+//                     </style>
+//                 </head>
+//                 <body>
+//                     <div class="email-container">
+//                         <div class="email-header">
+//                             <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+//                         </div>
+//                         <h1>Kad si spreman – mi smo tu.</h1>
+//                         <p>Neću ti reći da “sad moraš da kreneš”. Možda ti još treba malo vremena. Možda ti treba još koji znak.</p>
+//                         <p>Ali ako ti je dosta:</p>
+//                         <ul>
+//                             <li>počinjanja ponedeljkom</li>
+//                             <li>praznih aplikacija koje ti ne daju odgovore</li>
+//                             <li>osećaja da si sam u ovome</li>
+//                         </ul>
+//                         <p>…onda znaj da postoji način koji ne traži savršenstvo.</p>
+//                         <p>U NutriTrans-u si vođen, ali slobodan. I sve što trebaš da uradiš je da odlučiš: <strong>“Želim da budem uz sebe.”</strong></p>
+//                         <p>Kad klikneš “pretplata” – ne ulaziš u sistem. Ulaziš u proces. I nisi sam.</p>
+//                         <p>Tu smo. Kad god ti budeš spreman.</p>
+//                         <p>NutriTrans</p>
+//                         <div class="footer">
+//                             <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+//                         </div>
+//                     </div>
+//                 </body>
+//                 </html>
+//             `,
+//           });
 
-          console.log(`✅ [7days] Email poslat korisniku: ${user.mail}`);
-        }
-      }
-    }
+//           console.log(`✅ [7days] Email poslat korisniku: ${user.mail}`);
+//         }
+//       }
+//     }
 
-    console.log("[CRON-7days] Završena obrada.");
-  } catch (err) {
-    console.error("[CRON-7days] Greška u cron jobu:", err);
-  }
-});
+//     console.log("[CRON-7days] Završena obrada.");
+//   } catch (err) {
+//     console.error("[CRON-7days] Greška u cron jobu:", err);
+//   }
+// });
 
 //Mail 7 za slanje korisniku koji sa prvim Starter paketom - 28 dana posle prve prijave
-cron.schedule("0 9 * * *", async () => {
-  console.log(`[CRON-28days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
+// cron.schedule("0 9 * * *", async () => {
+//   console.log(`[CRON-28days] Pokretanje u 9h - ${new Date().toLocaleString()}`);
 
-  try {
-    const danas = new Date();
-    const preDvadesetOsamDana = new Date();
-    preDvadesetOsamDana.setDate(danas.getDate() - 28);
+//   try {
+//     const danas = new Date();
+//     const preDvadesetOsamDana = new Date();
+//     preDvadesetOsamDana.setDate(danas.getDate() - 28);
 
-    preDvadesetOsamDana.setHours(0, 0, 0, 0);
-    const krajDana = new Date(preDvadesetOsamDana);
-    krajDana.setHours(23, 59, 59, 999);
+//     preDvadesetOsamDana.setHours(0, 0, 0, 0);
+//     const krajDana = new Date(preDvadesetOsamDana);
+//     krajDana.setHours(23, 59, 59, 999);
 
-    const paketi = await Paket.find({
-      status: "Aktivan",
-      naziv_paketa: "Starter",
-      datum_kreiranja: {
-        $gte: preDvadesetOsamDana,
-        $lte: krajDana,
-      },
-    });
+//     const paketi = await Paket.find({
+//       status: "Aktivan",
+//       naziv_paketa: "Starter",
+//       datum_kreiranja: {
+//         $gte: preDvadesetOsamDana,
+//         $lte: krajDana,
+//       },
+//     });
 
-    for (const paket of paketi) {
-      const aktivniPaketiUsera = await Paket.find({
-        idUser: paket.idUser,
-        status: "Aktivan",
-      });
+//     for (const paket of paketi) {
+//       const aktivniPaketiUsera = await Paket.find({
+//         idUser: paket.idUser,
+//         status: "Aktivan",
+//       });
 
-      if (aktivniPaketiUsera.length === 1) {
-        const user = await User.findById(paket.idUser);
+//       if (aktivniPaketiUsera.length === 1) {
+//         const user = await User.findById(paket.idUser);
 
-        if (user && user.wellcome === "1" && user.isVerified === true) {
-          await transporter.sendMail({
-            from: "office@nutritrans.com",
-            to: user.mail,
-            subject: "28 dana – vreme za sledeći korak? 🚀",
-            html: `
-            <!DOCTYPE html>
-            <html lang="sr">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Doslednost ne znači savršenstvo. Već da ne odustaješ od sebe.</title>
-                <style>
-                    body {
-                        font-family: 'Arial', sans-serif;
-                        background-color: #f5f5f5;
-                        margin: 0;
-                        padding: 0;
-                        color: #444444;
-                    }
-                    .email-container {
-                        width: 100%;
-                        background-color: #ffffff;
-                        max-width: 600px;
-                        margin: 0 auto;
-                        padding: 40px;
-                        box-sizing: border-box;
-                        border-radius: 10px;
-                        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-                    }
-                    .email-header {
-                        text-align: center;
-                        margin-bottom: 30px;
-                    }
-                    .email-header img {
-                        width: 80%;
-                        max-width: 500px;
-                        border-radius: 8px;
-                    }
-                    h1 {
-                        color: #2d9d8b;
-                        font-size: 28px;
-                        margin-bottom: 15px;
-                        text-align: center;
-                        font-weight: bold;
-                    }
-                    p {
-                        color: #555555;
-                        font-size: 16px;
-                        line-height: 1.7;
-                        margin-bottom: 20px;
-                    }
-                    .cta-button {
-                        display: inline-block;
-                        padding: 15px 30px;
-                        background-color: #2d9d8b;
-                        color: white;
-                        text-decoration: none;
-                        font-size: 18px;
-                        font-weight: bold;
-                        border-radius: 5px;
-                        margin-top: 20px;
-                        text-align: center;
-                        transition: background-color 0.3s;
-                    }
-                    .cta-button:hover {
-                        background-color: #1f7d6a;
-                    }
-                    .footer {
-                        text-align: center;
-                        color: #888888;
-                        font-size: 12px;
-                        margin-top: 40px;
-                    }
-                    .footer a {
-                        color: #2d9d8b;
-                        text-decoration: none;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="email-container">
-                    <div class="email-header">
-                        <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
-                    </div>
-                    <h1>Doslednost ne znači savršenstvo. Već da ne odustaješ od sebe.</h1>
-                    <p>Polako se približava kraj tvoje prve mesečne pretplate. I znamo jedno:</p>
-                    <p>Ako si još tu – onda si već uradio više nego što misliš.</p>
-                    <p>Možda nisi bio savršen. Možda nisi ispunio svaki dan. Ali nisi odustao. A to – menja sve.</p>
-                    <p>Zato te želimo podsetiti:</p>
-                    <p><strong>Ovo nije kraj. Ovo je prelazak na sledeći nivo.</strong></p>
-                    <p>Tvoje telo, tvoje navike, tvoje poverenje – svi rastu kroz kontinuitet.</p>
-                    <p>Ako odlučiš da nastaviš, bićemo ovde.</p>
-                    <p>Ako zatreba pomoć – tu smo.</p>
-                    <p>Ako ti treba pauza – razumećemo.</p>
-                    <p>Ali jedno znaj:</p>
-                    <p><strong>Promena se ne meri danima. Već doslednošću.</strong> A ti je već imaš u sebi.</p>
-                    <p>S ljubavlju,</p>
-                    <p>NutriTrans tim</p>
-                    <div class="footer">
-                        <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
-                        <p><a href="#">Poseti našu web stranicu</a></p>
-                        <p><a href="mailto:contact@nutritrans.com">Kontaktiraj nas</a></p>
-                    </div>
-                </div>
-            </body>
-            </html>
+//         if (user && user.wellcome === "1" && user.isVerified === true) {
+//           await transporter.sendMail({
+//             from: "office@nutritrans.com",
+//             to: user.mail,
+//             subject: "28 dana – vreme za sledeći korak? 🚀",
+//             html: `
+//             <!DOCTYPE html>
+//             <html lang="sr">
+//             <head>
+//                 <meta charset="UTF-8">
+//                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//                 <title>Doslednost ne znači savršenstvo. Već da ne odustaješ od sebe.</title>
+//                 <style>
+//                     body {
+//                         font-family: 'Arial', sans-serif;
+//                         background-color: #f5f5f5;
+//                         margin: 0;
+//                         padding: 0;
+//                         color: #444444;
+//                     }
+//                     .email-container {
+//                         width: 100%;
+//                         background-color: #ffffff;
+//                         max-width: 600px;
+//                         margin: 0 auto;
+//                         padding: 40px;
+//                         box-sizing: border-box;
+//                         border-radius: 10px;
+//                         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+//                     }
+//                     .email-header {
+//                         text-align: center;
+//                         margin-bottom: 30px;
+//                     }
+//                     .email-header img {
+//                         width: 80%;
+//                         max-width: 500px;
+//                         border-radius: 8px;
+//                     }
+//                     h1 {
+//                         color: #2d9d8b;
+//                         font-size: 28px;
+//                         margin-bottom: 15px;
+//                         text-align: center;
+//                         font-weight: bold;
+//                     }
+//                     p {
+//                         color: #555555;
+//                         font-size: 16px;
+//                         line-height: 1.7;
+//                         margin-bottom: 20px;
+//                     }
+//                     .cta-button {
+//                         display: inline-block;
+//                         padding: 15px 30px;
+//                         background-color: #2d9d8b;
+//                         color: white;
+//                         text-decoration: none;
+//                         font-size: 18px;
+//                         font-weight: bold;
+//                         border-radius: 5px;
+//                         margin-top: 20px;
+//                         text-align: center;
+//                         transition: background-color 0.3s;
+//                     }
+//                     .cta-button:hover {
+//                         background-color: #1f7d6a;
+//                     }
+//                     .footer {
+//                         text-align: center;
+//                         color: #888888;
+//                         font-size: 12px;
+//                         margin-top: 40px;
+//                     }
+//                     .footer a {
+//                         color: #2d9d8b;
+//                         text-decoration: none;
+//                     }
+//                 </style>
+//             </head>
+//             <body>
+//                 <div class="email-container">
+//                     <div class="email-header">
+//                         <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="NutriTrans Logo">
+//                     </div>
+//                     <h1>Doslednost ne znači savršenstvo. Već da ne odustaješ od sebe.</h1>
+//                     <p>Polako se približava kraj tvoje prve mesečne pretplate. I znamo jedno:</p>
+//                     <p>Ako si još tu – onda si već uradio više nego što misliš.</p>
+//                     <p>Možda nisi bio savršen. Možda nisi ispunio svaki dan. Ali nisi odustao. A to – menja sve.</p>
+//                     <p>Zato te želimo podsetiti:</p>
+//                     <p><strong>Ovo nije kraj. Ovo je prelazak na sledeći nivo.</strong></p>
+//                     <p>Tvoje telo, tvoje navike, tvoje poverenje – svi rastu kroz kontinuitet.</p>
+//                     <p>Ako odlučiš da nastaviš, bićemo ovde.</p>
+//                     <p>Ako zatreba pomoć – tu smo.</p>
+//                     <p>Ako ti treba pauza – razumećemo.</p>
+//                     <p>Ali jedno znaj:</p>
+//                     <p><strong>Promena se ne meri danima. Već doslednošću.</strong> A ti je već imaš u sebi.</p>
+//                     <p>S ljubavlju,</p>
+//                     <p>NutriTrans tim</p>
+//                     <div class="footer">
+//                         <p>&copy; 2025 NutriTrans. Sva prava zadržana.</p>
+//                         <p><a href="#">Poseti našu web stranicu</a></p>
+//                         <p><a href="mailto:contact@nutritrans.com">Kontaktiraj nas</a></p>
+//                     </div>
+//                 </div>
+//             </body>
+//             </html>
 
-            `,
-          });
+//             `,
+//           });
 
-          console.log(`✅ [28days] Email poslat korisniku: ${user.mail}`);
-        }
-      }
-    }
+//           console.log(`✅ [28days] Email poslat korisniku: ${user.mail}`);
+//         }
+//       }
+//     }
 
-    console.log("[CRON-28days] Završena obrada.");
-  } catch (err) {
-    console.error("[CRON-28days] Greška u cron jobu:", err);
-  }
-});
+//     console.log("[CRON-28days] Završena obrada.");
+//   } catch (err) {
+//     console.error("[CRON-28days] Greška u cron jobu:", err);
+//   }
+// });
 
 //==== CONNECTIONS ====
 
 //DEV
-// const sslOptions = {
-//   key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
-//   cert: fs.readFileSync(
-//     "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
-//   ),
-// };
+const sslOptions = {
+  key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
+  cert: fs.readFileSync(
+    "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
+  ),
+};
 
 //PRODUCTION
-const sslOptions = {
-  key: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/privkey.pem"),
-  cert: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/fullchain.pem"),
-};
+// const sslOptions = {
+//   key: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/privkey.pem"),
+//   cert: fs.readFileSync("/etc/letsencrypt/live/nutritrans.rs/fullchain.pem"),
+// };
 
 //SA HTTPS
 mongoose.connection.once("open", () => {
