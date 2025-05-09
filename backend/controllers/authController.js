@@ -266,32 +266,32 @@ const register = async (req, res) => {
     const user = await User.create(userObject);
 
     //Creating base paket
-    const paketObjekat = {
-      orgderId: "",
-      naziv_paketa: "Starter", // Svi novi useri ce imati starter paket
-      cena: 0,
-      valuta: "RSD",
-      status_placanja: "Plaćeno",
-      status: "Aktivan",
-      tip: "",
-      broj: {
-        full: "0",
-        base: "0",
-      },
-      datum_kreiranja: new Date(),
-      datum_isteka: new Date(new Date().setMonth(new Date().getMonth() + 1)),
-      datum_placanja: new Date(),
-      // datum_otkazivanja:,
-      idUser: user._id,
-      transakcioni_id: "",
-      metoda_placanja: "",
-      TransId: "",
-      recurringID: "",
-      userMail: user.mail,
-    };
+    // const paketObjekat = {
+    //   orgderId: "",
+    //   naziv_paketa: "Starter", // Svi novi useri ce imati starter paket
+    //   cena: 0,
+    //   valuta: "RSD",
+    //   status_placanja: "Plaćeno",
+    //   status: "Aktivan",
+    //   tip: "",
+    //   broj: {
+    //     full: "0",
+    //     base: "0",
+    //   },
+    //   datum_kreiranja: new Date(),
+    //   datum_isteka: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+    //   datum_placanja: new Date(),
+    //   // datum_otkazivanja:,
+    //   idUser: user._id,
+    //   transakcioni_id: "",
+    //   metoda_placanja: "",
+    //   TransId: "",
+    //   recurringID: "",
+    //   userMail: user.mail,
+    // };
 
     //Radi ok!
-    const paket = await Paket.create(paketObjekat);
+    // const paket = await Paket.create(paketObjekat);
 
     const verificationToken = jwt.sign(
       { userId: user._id },
