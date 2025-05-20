@@ -8,35 +8,156 @@ const nodemailer = require("nodemailer");
 require("dotenv").config();
 // const GoogleStrategy = require("passport-google-oauth2").Strategy;
 
+function isValidEmail(email) {
+  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return regex.test(email);
+}
+
+// const login = async (req, res) => {
+//   //username je ustvari email
+//   const { email, password } = req.body;
+//   // console.log(username);
+
+//   if (!email || !password) {
+//     return res.status(400).json({ message: "Email i lozinka su obavezni" });
+//   }
+
+//   if (email == " " && password == " ") {
+//     return res.status(400).json({ message: "Neispravni podaci za prijavu" });
+//   }
+
+//   if (!isValidEmail(email)) {
+//     return res.status(400).json({ message: "Neispravan format email adrese" });
+//   }
+
+//   const foundUser = await User.findOne({ mail: email }).exec();
+
+//   // if (!foundUser || !foundUser.active) {
+//   //     return res.status(401).json({ message: 'Unauthorized' })
+//   // }
+
+//   if (!foundUser) {
+//     return res.status(401).json({ message: "Nalog nije pronađen" });
+//   }
+
+//   const match = await bcrypt.compare(password, foundUser.password);
+
+//   if (!match) return res.status(401).json({ message: "Pogrešna lozinka" });
+
+//   const accessToken = jwt.sign(
+//     {
+//       UserInfo: {
+//         id: foundUser._id,
+//         // jmbg: foundUser.jmbg,
+//         email: foundUser.mail, //Je mail ovde
+//         roles: foundUser.roles,
+//       },
+//     },
+//     process.env.ACCESS_TOKEN_SECRET,
+//     { expiresIn: "30h" }
+//   );
+
+//   const refreshToken = jwt.sign(
+//     { email: foundUser.mail },
+//     process.env.REFRESH_TOKEN_SECRET,
+//     { expiresIn: "7d" }
+//   );
+
+//   //Svaki put kad se neko uloguje onda se proverava da li postoji neki paket sa Datum placanja = null ili "Pending"
+//   //da bi ocistili bazi
+//   Paket.deleteMany({ status_placanja: "Pending" })
+//     .then((result) => {
+//       console.log(`${result.deletedCount} paketa su obrisana.`);
+//     })
+//     .catch((err) => {
+//       console.error("Greška pri brisanju paketa:", err);
+//     });
+
+//   //Azurira sve pakete koji su istekli - GODISNJE SAMO - PREMESTENO U KRON
+//   // const today = new Date();
+//   // const paketi = await Paket.find({ idUser: foundUser._id, tip: "Godišnje" }); //tip: "Godišnje"
+//   // const updatedPaketi = await Promise.all(
+//   //   paketi.map(async (paket) => {
+//   //     if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
+//   //       paket.status = "Neaktivan";
+//   //       await paket.save();
+//   //     }
+//   //     return paket;
+//   //   })
+//   // );
+
+//   res.cookie("jwt", refreshToken, {
+//     httpOnly: true, //accessible only by web server
+//     secure: false, //true je za https - false je za http
+//     same_site: "None", //cross-site cookie - iz sa sameSite u same_site
+//     maxAge: 7 * 24 * 60 * 60 * 1000,
+//   });
+
+//   res.json({ accessToken });
+// };
+
 const login = async (req, res) => {
-  //username je ustvari email
-  const { email, password } = req.body;
-  // console.log(username);
+  let { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "Sav poslja su potrebna" });
-  }
+  // Trim prazni karakteri
+  email = email?.trim();
+  password = password?.trim();
 
-  const foundUser = await User.findOne({ mail: email }).exec();
+  // console.log("Email vrednost:", JSON.stringify(email));
+  // console.log("Password vrednost:", JSON.stringify(password));
 
-  // if (!foundUser || !foundUser.active) {
-  //     return res.status(401).json({ message: 'Unauthorized' })
+  // 5. Ako su oba uneta, ali su SAMO razmaci
+  // const isOnlySpaces = (value) =>
+  //   typeof value === "string" && value.trim() === "" && value.length > 0;
+
+  // if (isOnlySpaces(email) || isOnlySpaces(password)) {
+  //   return res.status(400).json({ message: "Neispravni podaci za prijavu." });
   // }
 
-  if (!foundUser) {
-    return res.status(401).json({ message: "Nepostojeći korisnik" });
+  // // 1. Provera: oba polja zaista prazna ("")
+  // if (email === "" && password === "") {
+  //   return res.status(400).json({ message: "Email i lozinka su obavezni." });
+  // }
+
+  // // 1. Prazan email i lozinka
+  // if (!email && !password) {
+  //   return res.status(400).json({ message: "Email i lozinka su obavezni." });
+  // }
+
+  // 7. Validan email, prazna lozinka
+  if (email && !password) {
+    return res.status(400).json({ message: "Lozinka je obavezna." });
   }
 
+  // 8. Prazan email, uneta lozinka
+  if (!email && password) {
+    return res.status(400).json({ message: "Email je obavezan." });
+  }
+
+  // 2. Neispravan format email adrese
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: "Neispravan format email adrese." });
+  }
+
+  // 6. Velika/mala slova (case-sensitive login neuspeh) — email treba biti lowercase
+  const foundUser = await User.findOne({ mail: email }).exec();
+  if (!foundUser) {
+    return res.status(401).json({ message: "Nalog nije pronađen." });
+  }
+
+  // 4. Pogrešna lozinka
   const match = await bcrypt.compare(password, foundUser.password);
+  if (!match) {
+    return res.status(401).json({ message: "Pogrešna lozinka." });
+  }
 
-  if (!match) return res.status(401).json({ message: "Pogrešna lozinka" });
-
+  // 7. Generiši JWT tokene
   const accessToken = jwt.sign(
     {
       UserInfo: {
         id: foundUser._id,
-        // jmbg: foundUser.jmbg,
-        email: foundUser.mail, //Je mail ovde
+        email: foundUser.mail,
         roles: foundUser.roles,
       },
     },
@@ -50,37 +171,16 @@ const login = async (req, res) => {
     { expiresIn: "7d" }
   );
 
-  //Svaki put kad se neko uloguje onda se proverava da li postoji neki paket sa Datum placanja = null ili "Pending"
-  //da bi ocistili bazi
-  Paket.deleteMany({ status_placanja: "Pending" })
-    .then((result) => {
-      console.log(`${result.deletedCount} paketa su obrisana.`);
-    })
-    .catch((err) => {
-      console.error("Greška pri brisanju paketa:", err);
-    });
-
-  //Azurira sve pakete koji su istekli - GODISNJE SAMO - PREMESTENO U KRON
-  // const today = new Date();
-  // const paketi = await Paket.find({ idUser: foundUser._id, tip: "Godišnje" }); //tip: "Godišnje"
-  // const updatedPaketi = await Promise.all(
-  //   paketi.map(async (paket) => {
-  //     if (!(today >= paket.datum_placanja && today <= paket.datum_isteka)) {
-  //       paket.status = "Neaktivan";
-  //       await paket.save();
-  //     }
-  //     return paket;
-  //   })
-  // );
-
+  // 8. Sačuvaj refresh token u kolačić
   res.cookie("jwt", refreshToken, {
-    httpOnly: true, //accessible only by web server
-    secure: false, //true je za https - false je za http
-    same_site: "None", //cross-site cookie - iz sa sameSite u same_site
+    httpOnly: true,
+    secure: false, // Prebaci na true u produkciji sa HTTPS
+    sameSite: "None",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
-  res.json({ accessToken });
+  // 9. Vraćanje tokena i poruke
+  res.json({ accessToken, message: "Login uspešan." });
 };
 
 //
@@ -232,8 +332,20 @@ const register = async (req, res) => {
   const { email, password } = req.body;
   console.log(req.body);
 
-  if (!email || !password) {
-    return res.status(400).json({ message: "Sva polja su potrebna" });
+  const emailRegex =
+    /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)\.){3}(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)|\[(?:[0-9a-fA-F]{1,4}:){1,6}:(?:[0-9a-fA-F]{1,4}:)?[0-9a-fA-F]{1,4}|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\]))$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: "Neispravan format email adrese." });
+  }
+
+  //ODKOMENTARISI Abcdef1!  jovanovicv420@gmail.com
+  const strongPasswordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+  if (!strongPasswordRegex.test(password)) {
+    return res.status(400).json({
+      message:
+        "Lozinka mora imati najmanje 8 karaktera, uključujući veliko slovo, malo slovo, broj i specijalni karakter.",
+    });
   }
 
   try {
@@ -301,8 +413,8 @@ const register = async (req, res) => {
 
     user.currentToken = verificationToken;
     await user.save();
-
-    const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}`;
+    //?showLogin=true
+    const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}&showLogin=true`;
     // const verificationLink = `http://localhost:5000/verify-email?token=${verificationToken}`;
 
     const transporter = nodemailer.createTransport({
@@ -330,11 +442,11 @@ const register = async (req, res) => {
                 <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                 <h1 style="color: #333; font-size: 28px;">🎉 Dobrodošli na Nutri Trans! 🎉</h1>
                 <p style="color: #555; font-size: 18px;">Da biste uspešno završili registraciju, kliknite na dugme ispod da biste aktivirali svoj nalog.</p>
-                
+
                 <a href="${verificationLink}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 14px 28px; font-size: 18px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px;">✅ Aktivirajte svoj nalog</a>
-                
+
                 <p style="color: #777; font-size: 14px; margin-top: 30px;">Ako niste kreirali ovaj nalog, slobodno ignorišite ovaj email.</p>
-                
+
                 <p style="color: #999; font-size: 12px; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj email. Hvala na poverenju! 🚀</p>
             </div>
             `,
@@ -355,7 +467,7 @@ const register = async (req, res) => {
                 <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                 <h1 style="color: #333; font-size: 28px;">📃 Uputstvo za Nutri Trans! 📃</h1>
                 <p style="color: #555; font-size: 18px;">U prilogu Vam šaljemo PDF dokument vezan za Nutri Trans aplikaciju. Molimo Vas da ga pregledate i javite nam ako imate bilo kakvih pitanja ili potrebna dodatna pojašnjenja.</p>
-                
+
                 <p style="color: #999; font-size: 12px; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj email. Hvala na poverenju! 🚀</p>
             </div>`,
           attachments: [
@@ -389,6 +501,66 @@ const register = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// const register = async (req, res) => {
+//   const { email, password } = req.body;
+//   console.log(req.body);
+
+//   const emailRegex =
+//     /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)\.){3}(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)|\[(?:[0-9a-fA-F]{1,4}:){1,6}:(?:[0-9a-fA-F]{1,4}:)?[0-9a-fA-F]{1,4}|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\]))$/;
+//   if (!emailRegex.test(email)) {
+//     return res.status(400).json({ message: "Neispravan format email adrese." });
+//   }
+
+//   //ODKOMENTARISI Abcdef1!  jovanovicv420@gmail.com
+//   const strongPasswordRegex =
+//     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+//   if (!strongPasswordRegex.test(password)) {
+//     return res.status(400).json({
+//       message:
+//         "Lozinka mora imati najmanje 8 karaktera, uključujući veliko slovo, malo slovo, broj i specijalni karakter.",
+//     });
+//   }
+
+//   try {
+//     const duplicate = await User.findOne({ mail: email })
+//       .collation({ locale: "en", strength: 2 })
+//       .lean()
+//       .exec();
+
+//     if (duplicate) {
+//       if (duplicate.isVerified) {
+//         return res
+//           .status(409)
+//           .json({ message: "Email adresa je već u upotrebi" });
+//       } else {
+//         return res
+//           .status(409)
+//           .json({ message: "Korisnik postoji, ali nije verifikovan" });
+//       }
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     const userObject = {
+//       mail: email,
+//       password: hashedPassword,
+//       isVerified: false,
+//     };
+
+//     //Creating user
+//     const user = await User.create(userObject);
+
+//     const verificationToken = jwt.sign(
+//       { userId: user._id },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1h" }
+//     );
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 const forgot_password = async (req, res) => {
   const { email } = req.body;
