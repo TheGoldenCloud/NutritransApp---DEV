@@ -356,7 +356,7 @@ app.post(
   }
 );
 
-// Endpoint za dohvat korisnika
+// Endpoint za dohvat slike
 app.get("/api/users/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -369,7 +369,9 @@ app.get("/api/users/:id", async (req, res) => {
 
     res.json(usrImg);
   } catch (error) {
-    res.status(500).json({ message: "Greška pri dohvatu korisnika", error });
+    res
+      .status(500)
+      .json({ message: "Greška pri dohvatu slike korisnika", error });
   }
 });
 
@@ -4123,7 +4125,6 @@ app.use("/test2", async (req, res) => {
     // ● Namirnice koje voli: ${data_.voljeneNamirnice}
     // ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
 
-    //work here
     // let daniPredprompt_ = `
     //   Ti si profesionalni nutricionista i dijetetičar, sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane i kontrolor grešaka. Tvoj posao je da budeš opsesivno tačan. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
 
@@ -4458,7 +4459,7 @@ app.use("/test2", async (req, res) => {
     let brIzabranihDana = data_.ucestBr.split(",").map((r) => r.trim()).length;
 
     let daniPrmpt_ = ` Napravite ${
-      brIzabranihDana === 3 ? "trodevni" : "sedmodnevni"
+      brojDana == "3" ? "trodevni" : "sedmodnevni"
     } plan ishrane sa tačno ${brIzabranihDana} obroka dnevno: doručak, ručak i večera.
 
                     Cilj: ${data_.primcilj}.  
@@ -6690,13 +6691,21 @@ app.post("/blogHistory", async (req, res) => {
   }
 });
 
+//Piletina sa povrcem i kikirikijem u soja sosu x2 jedno ljuto jedno ne ljuto
+//Junetina sa povrcem i sampinjonima u soja sosu
+//
+
+//Nikola => 400
+//Dekijev sin => 400
+//Ja tacno!
+
 app.post("/proveraEmaila", async (req, res) => {
   const { email } = req.body;
 
   const trimmedEmail = email ? email.trim() : "";
 
   if (!trimmedEmail) {
-    return res.status(400).json({ error: "Molim vas unesite email adresu." });
+    return res.status(400).json({ error: "Uneti podatke" });
   }
 
   const emailRegex =
@@ -10996,12 +11005,12 @@ const transporter = nodemailer.createTransport({
 //==== CONNECTIONS ====
 
 //DEV
-const sslOptions = {
-  key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
-  cert: fs.readFileSync(
-    "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
-  ),
-};
+// const sslOptions = {
+//   key: fs.readFileSync("/etc/letsencrypt/live/dev.nutritrans.rs/privkey.pem"),
+//   cert: fs.readFileSync(
+//     "/etc/letsencrypt/live/dev.nutritrans.rs/fullchain.pem"
+//   ),
+// };
 
 //PRODUCTION
 // const sslOptions = {
@@ -11010,20 +11019,20 @@ const sslOptions = {
 // };
 
 //SA HTTPS
-mongoose.connection.once("open", () => {
-  console.log("Connected to MongoDB!");
-  https.createServer(sslOptions, app).listen(PORT, () => {
-    console.log(`HTTPS server running on port ${PORT}`);
-  });
-});
-
-//BEZ HTTPS
 // mongoose.connection.once("open", () => {
-//   console.log("Connected to MongoDB");
-//   app.listen(PORT, () => {
-//     console.log(`Server running on port ${PORT}`);
+//   console.log("Connected to MongoDB!");
+//   https.createServer(sslOptions, app).listen(PORT, () => {
+//     console.log(`HTTPS server running on port ${PORT}`);
 //   });
 // });
+
+//BEZ HTTPS
+mongoose.connection.once("open", () => {
+  console.log("Connected to MongoDB");
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+});
 
 mongoose.connection.on("error", (err) => {
   console.log(err);
