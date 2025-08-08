@@ -119,6 +119,7 @@ const chatKonverzacija = new mongoose.Schema({
         },
       },
     ],
+    // dani: { type: String, required: false, default: "" },
     smernice: { type: String, required: false, default: "" },
     planFizickeAktivnosti: { type: String, required: false, default: "" },
     podrskaZaImunitet: { type: String, required: false, default: "" },

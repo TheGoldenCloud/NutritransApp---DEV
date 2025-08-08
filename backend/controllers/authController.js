@@ -152,12 +152,12 @@ const login = async (req, res) => {
     return res.status(401).json({ message: "Pogrešna lozinka." });
   }
 
-  // 7. Generiši JWT tokene
   const accessToken = jwt.sign(
     {
       UserInfo: {
         id: foundUser._id,
-        email: foundUser.mail,
+        // jmbg: foundUser.jmbg,
+        email: foundUser.mail, //Je mail ovde
         roles: foundUser.roles,
       },
     },
@@ -171,16 +171,25 @@ const login = async (req, res) => {
     { expiresIn: "7d" }
   );
 
-  // 8. Sačuvaj refresh token u kolačić
+  //Svaki put kad se neko uloguje onda se proverava da li postoji neki paket sa Datum placanja = null ili "Pending"
+  //da bi ocistili bazi
+  Paket.deleteMany({ status_placanja: "Pending" })
+    .then((result) => {
+      console.log(`${result.deletedCount} paketa su obrisana.`);
+    })
+    .catch((err) => {
+      console.error("Greška pri brisanju paketa:", err);
+    });
+
   res.cookie("jwt", refreshToken, {
-    httpOnly: true,
-    secure: false, // Prebaci na true u produkciji sa HTTPS
-    sameSite: "None",
+    httpOnly: true, //accessible only by web server
+    secure: false, //true je za https - false je za http
+    same_site: "None", //cross-site cookie - iz sa sameSite u same_site
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
   // 9. Vraćanje tokena i poruke
-  res.json({ accessToken, message: "Login uspešan." });
+  res.json({ accessToken });
 };
 
 //
@@ -292,13 +301,13 @@ const login = async (req, res) => {
 //       port: 587,
 //       secure: false,
 //       auth: {
-//         user: "office@nutritrans.com",
-//         pass: "jezq ddqo aynu qucx",
+//         user: process.env.MAILUSER,
+//         pass: process.env.MAILPASS,
 //       },
 //     });
 
 //     const mailOptions = {
-//       from: "office@nutritrans.com",
+//       from: process.env.MAILUSER,
 //       to: email,
 //       subject: "Registracija profila",
 //       html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
@@ -325,6 +334,183 @@ const login = async (req, res) => {
 //   } catch (err) {
 //     console.error(err);
 //     res.status(500).json({ message: "Server error" });
+//   }
+// };
+// Lazarevac22@
+
+// ORIGINAL
+// const register = async (req, res) => {
+//   const { email, password } = req.body;
+//   console.log(req.body);
+
+//   const emailRegex =
+//     /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)\.){3}(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)|\[(?:[0-9a-fA-F]{1,4}:){1,6}:(?:[0-9a-fA-F]{1,4}:)?[0-9a-fA-F]{1,4}|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\]))$/;
+//   if (!emailRegex.test(email)) {
+//     return res.status(400).json({ message: "Neispravan format email adrese." });
+//   }
+
+//   //ODKOMENTARISI Abcdef1!  jovanovicv420@gmail.com
+//   const strongPasswordRegex =
+//     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+//   if (!strongPasswordRegex.test(password)) {
+//     return res.status(400).json({
+//       message:
+//         "Lozinka mora imati najmanje 8 karaktera, uključujući veliko slovo, malo slovo, broj i specijalni karakter.",
+//     });
+//   }
+
+//   try {
+//     const duplicate = await User.findOne({ mail: email })
+//       .collation({ locale: "en", strength: 2 })
+//       .lean()
+//       .exec();
+
+//     if (duplicate) {
+//       if (duplicate.isVerified) {
+//         return res
+//           .status(409)
+//           .json({ message: "Korisnik već postoji i verifikovan je" });
+//       } else {
+//         return res
+//           .status(409)
+//           .json({ message: "Korisnik postoji, ali nije verifikovan" });
+//       }
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     const userObject = {
+//       mail: email,
+//       password: hashedPassword,
+//       isVerified: false,
+//     };
+
+//     //Creating user
+//     const user = await User.create(userObject);
+
+//     //Creating base paket
+//     // const paketObjekat = {
+//     //   orgderId: "",
+//     //   naziv_paketa: "Starter", // Svi novi useri ce imati starter paket
+//     //   cena: 0,
+//     //   valuta: "RSD",
+//     //   status_placanja: "Plaćeno",
+//     //   status: "Aktivan",
+//     //   tip: "",
+//     //   broj: {
+//     //     full: "0",
+//     //     base: "0",
+//     //   },
+//     //   datum_kreiranja: new Date(),
+//     //   datum_isteka: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+//     //   datum_placanja: new Date(),
+//     //   // datum_otkazivanja:,
+//     //   idUser: user._id,
+//     //   transakcioni_id: "",
+//     //   metoda_placanja: "",
+//     //   TransId: "",
+//     //   recurringID: "",
+//     //   userMail: user.mail,
+//     // };
+
+//     //Radi ok!
+//     // const paket = await Paket.create(paketObjekat);
+
+//     const verificationToken = jwt.sign(
+//       { userId: user._id },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1h" }
+//     );
+
+//     user.currentToken = verificationToken;
+//     await user.save();
+//     //?showLogin=true
+//     const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}&showLogin=true`;
+//     // const verificationLink = `http://localhost:5000/verify-email?token=${verificationToken}`;
+
+//     const transporter = nodemailer.createTransport({
+//       service: "gmail",
+//       host: "smtp.gmail.email",
+//       port: 587,
+//       secure: false,
+//       auth: {
+//         user: process.env.MAILUSER,
+//         pass: process.env.MAILPASS,
+//       },
+//     });
+
+//     const mailOptions = {
+//       from: process.env.MAILUSER,
+//       to: email,
+//       subject: "Registracija profila",
+//       // html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+//       //           <h1 style="color: #333;">Dobrodošli na Nutri Trans!</h1>
+//       //           <p style="color: #555;">Da biste uspešno završili registraciju, kliknite na dugme ispod da biste aktivirali svoj nalog.</p>
+//       //           <a href="${verificationLink}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px;">Aktivirajte svoj nalog</a>
+//       //           <p style="color: #555; margin-top: 20px;">Molimo vas da ne odgovarate na ovaj email. Hvala.</p>
+//       //       </div>`,
+//       html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
+//                 <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+//                 <h1 style="color: #333; font-size: 28px;">🎉 Dobrodošli na Nutri Trans! 🎉</h1>
+//                 <p style="color: #555; font-size: 18px;">Da biste uspešno završili registraciju, kliknite na dugme ispod da biste aktivirali svoj nalog.</p>
+
+//                 <a href="${verificationLink}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 14px 28px; font-size: 18px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px;">✅ Aktivirajte svoj nalog</a>
+
+//                 <p style="color: #777; font-size: 14px; margin-top: 30px;">Ako niste kreirali ovaj nalog, slobodno ignorišite ovaj email.</p>
+
+//                 <p style="color: #999; font-size: 12px; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj email. Hvala na poverenju! 🚀</p>
+//             </div>
+//             `,
+//     };
+
+//     transporter.sendMail(mailOptions, function (error, info) {
+//       if (error) {
+//         console.error("Greška pri slanju prvog emaila:", error);
+//         return res.status(400).json({ message: "Greška pri slanju emaila" });
+//       } else {
+//         console.log("Email za verifikaciju poslat:", info.response);
+
+//         // Drugi email - saljemo pdf...
+//         const secondMailOptions = {
+//           from: process.env.MAILUSER,
+//           to: profile.emails[0].value,
+//           subject: "Propratne informacije",
+//           html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
+//                 <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
+//                 <h1 style="color: #333; font-size: 28px;">📃 Uputstvo za Nutri Trans! 📃</h1>
+//                 <p style="color: #555; font-size: 18px;">U prilogu Vam šaljemo PDF dokument vezan za Nutri Trans aplikaciju. Molimo Vas da ga pregledate i javite nam ako imate bilo kakvih pitanja ili potrebna dodatna pojašnjenja.</p>
+
+//                 <p style="color: #999; font-size: 12px; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj email. Hvala na poverenju! 🚀</p>
+//             </div>`,
+//           attachments: [
+//             {
+//               filename: "vodic.pdf",
+//               path: "./vodic.pdf",
+//               contentType: "application/pdf",
+//             },
+//           ],
+//         };
+
+//         transporter.sendMail(secondMailOptions, (err, info) => {
+//           if (err) {
+//             console.error("Greška pri slanju drugog email-a:", err);
+//           } else {
+//             console.log("Drugi email poslat sa PDF prilogom:", info.response);
+//           }
+//         });
+//       }
+//     });
+
+//     if (user) {
+//       return res
+//         .status(201)
+//         .json({ message: `Novi user sa emailom ${email} napravljen` });
+//     } else {
+//       res.status(400).json({ message: "Ne validni podatci dobijeni" });
+//     }
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ message: "Server error" });
 //   }
 // };
 
@@ -423,13 +609,13 @@ const register = async (req, res) => {
       port: 587,
       secure: false,
       auth: {
-        user: "office@nutritrans.com",
-        pass: "jezq ddqo aynu qucx",
+        user: process.env.MAILUSER,
+        pass: process.env.MAILPASS,
       },
     });
 
     const mailOptions = {
-      from: "office@nutritrans.com",
+      from: process.env.MAILUSER,
       to: email,
       subject: "Registracija profila",
       // html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
@@ -452,115 +638,158 @@ const register = async (req, res) => {
             `,
     };
 
-    transporter.sendMail(mailOptions, function (error, info) {
-      if (error) {
-        return res.status(400).json({ message: "Nije uspelo slanje na mail" });
-      } else {
-        console.log("Email za verifikaciju poslat:", info.response);
-
-        // Drugi email - saljemo pdf...
-        const secondMailOptions = {
-          from: "office@nutritrans.com",
-          to: profile.emails[0].value,
-          subject: "Propratne informacije",
-          html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
+    // Drugi email - saljemo pdf...
+    const secondMailOptions = {
+      from: process.env.MAILUSER,
+      to: email,
+      subject: "Propratne informacije",
+      html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f9f9f9; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
                 <img src="${process.env.FRONTEND_URL}:5000/logoo.png" alt="Nutrition Transformation Logo" style="max-width: 150px; margin-bottom: 20px;">
                 <h1 style="color: #333; font-size: 28px;">📃 Uputstvo za Nutri Trans! 📃</h1>
                 <p style="color: #555; font-size: 18px;">U prilogu Vam šaljemo PDF dokument vezan za Nutri Trans aplikaciju. Molimo Vas da ga pregledate i javite nam ako imate bilo kakvih pitanja ili potrebna dodatna pojašnjenja.</p>
 
                 <p style="color: #999; font-size: 12px; margin-top: 20px;">Molimo Vas da ne odgovarate na ovaj email. Hvala na poverenju! 🚀</p>
             </div>`,
-          attachments: [
-            {
-              filename: "vodic.pdf",
-              path: "./vodic.pdf",
-              contentType: "application/pdf",
-            },
-          ],
-        };
+      attachments: [
+        {
+          filename: "vodic.pdf",
+          path: "./vodic.pdf",
+          contentType: "application/pdf",
+        },
+      ],
+    };
 
-        transporter.sendMail(secondMailOptions, (err, info) => {
-          if (err) {
-            console.error("Greška pri slanju drugog email-a:", err);
-          } else {
-            console.log("Drugi email poslat sa PDF prilogom:", info.response);
-          }
-        });
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.error("Greška pri slanju prvog emaila:", error);
+        return res.status(400).json({ message: "Greška pri slanju emaila" });
       }
-    });
 
-    if (user) {
-      res
-        .status(201)
-        .json({ message: `Novi user sa emailom ${email} napravljen` });
-    } else {
-      res.status(400).json({ message: "Ne validni podatci dobijeni" });
-    }
+      console.log("Prvi email poslat:", info.response);
+
+      // Slanje drugog mejla
+      transporter.sendMail(secondMailOptions, function (err, info2) {
+        if (err) {
+          console.error("Greška pri slanju drugog emaila:", err);
+          // Ali ovde NE šaljemo response ponovo, samo logujemo
+        } else {
+          console.log("Drugi email poslat:", info2.response);
+        }
+
+        // ✅ Na kraju - response šaljemo samo jednom, ovde
+        return res
+          .status(201)
+          .json({ message: `Novi user sa emailom ${email} napravljen` });
+      });
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
-// const register = async (req, res) => {
-//   const { email, password } = req.body;
-//   console.log(req.body);
+const registerA = async (req, res) => {
+  const { email, password } = req.body;
 
-//   const emailRegex =
-//     /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)\.){3}(?:(2(5[0-5]|[0-4][0-9])|[01]?[0-9][0-9]?)|\[(?:[0-9a-fA-F]{1,4}:){1,6}:(?:[0-9a-fA-F]{1,4}:)?[0-9a-fA-F]{1,4}|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\]))$/;
-//   if (!emailRegex.test(email)) {
-//     return res.status(400).json({ message: "Neispravan format email adrese." });
-//   }
+  // ... validacije emaila i lozinke, kao u tvojoj funkciji
 
-//   //ODKOMENTARISI Abcdef1!  jovanovicv420@gmail.com
-//   const strongPasswordRegex =
-//     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
-//   if (!strongPasswordRegex.test(password)) {
-//     return res.status(400).json({
-//       message:
-//         "Lozinka mora imati najmanje 8 karaktera, uključujući veliko slovo, malo slovo, broj i specijalni karakter.",
-//     });
-//   }
+  try {
+    const duplicate = await User.findOne({ mail: email })
+      .collation({ locale: "en", strength: 2 })
+      .lean()
+      .exec();
 
-//   try {
-//     const duplicate = await User.findOne({ mail: email })
-//       .collation({ locale: "en", strength: 2 })
-//       .lean()
-//       .exec();
+    if (duplicate) {
+      if (duplicate.isVerified) {
+        return res
+          .status(409)
+          .json({ message: "Korisnik već postoji i verifikovan je" });
+      } else {
+        return res
+          .status(409)
+          .json({ message: "Korisnik postoji, ali nije verifikovan" });
+      }
+    }
 
-//     if (duplicate) {
-//       if (duplicate.isVerified) {
-//         return res
-//           .status(409)
-//           .json({ message: "Email adresa je već u upotrebi" });
-//       } else {
-//         return res
-//           .status(409)
-//           .json({ message: "Korisnik postoji, ali nije verifikovan" });
-//       }
-//     }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      mail: email,
+      password: hashedPassword,
+      isVerified: false,
+    });
 
-//     const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-//     const userObject = {
-//       mail: email,
-//       password: hashedPassword,
-//       isVerified: false,
-//     };
+    user.currentToken = verificationToken;
+    await user.save();
 
-//     //Creating user
-//     const user = await User.create(userObject);
+    const verificationLink = `${process.env.FRONTEND_URL}:5000/verify-email?token=${verificationToken}&showLogin=true`;
 
-//     const verificationToken = jwt.sign(
-//       { userId: user._id },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "1h" }
-//     );
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      host: "smtp.gmail.email",
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.MAILUSER,
+        pass: process.env.MAILPASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.MAILUSER,
+      to: email,
+      subject: "Registracija profila",
+      html: `<p>Dobrodošli... Kliknite za verifikaciju</p>`, // skraceno
+    };
+
+    const secondMailOptions = {
+      from: process.env.MAILUSER,
+      to: email,
+      subject: "Propratne informacije",
+      html: `<p>Uputstvo i PDF u prilogu</p>`,
+      attachments: [
+        {
+          filename: "vodic.pdf",
+          path: "./vodic.pdf",
+          contentType: "application/pdf",
+        },
+      ],
+    };
+
+    // Slanje prvog maila
+    transporter.sendMail(mailOptions, function (error, info) {
+      if (error) {
+        console.error("Greška pri slanju prvog emaila:", error);
+        return res.status(400).json({ message: "Greška pri slanju emaila" });
+      }
+
+      console.log("Prvi email poslat:", info.response);
+
+      // Slanje drugog mejla
+      transporter.sendMail(secondMailOptions, function (err, info2) {
+        if (err) {
+          console.error("Greška pri slanju drugog emaila:", err);
+          // Ali ovde NE šaljemo response ponovo, samo logujemo
+        } else {
+          console.log("Drugi email poslat:", info2.response);
+        }
+
+        // ✅ Na kraju - response šaljemo samo jednom, ovde
+        return res
+          .status(201)
+          .json({ message: `Novi user sa emailom ${email} napravljen` });
+      });
+    });
+  } catch (err) {
+    console.error("Greška:", err);
+    return res.status(500).json({ message: "Greška prilikom registracije." });
+  }
+};
 
 const forgot_password = async (req, res) => {
   const { email } = req.body;
@@ -591,13 +820,13 @@ const forgot_password = async (req, res) => {
       port: 587,
       secure: false,
       auth: {
-        user: "office@nutritrans.com",
-        pass: "jezq ddqo aynu qucx",
+        user: process.env.MAILUSER,
+        pass: process.env.MAILPASS,
       },
     });
 
     var mailOptions = {
-      from: "office@nutritrans.com",
+      from: process.env.MAILUSER,
       to: email,
       subject: "Password Reset",
       // text: link,

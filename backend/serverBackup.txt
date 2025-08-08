@@ -1539,13 +1539,13 @@ app.use("/test1", async (req, res) => {
           port: 587,
           secure: false,
           auth: {
-            user: "office@nutritrans.com",
-            pass: "jezq ddqo aynu qucx",
+            user: process.env.MAILUSER,
+            pass: process.env.MAILPASS,
           },
         });
     
         var mailOptions = {
-          from: "office@nutritrans.com",
+          from: process.env.MAILUSER,
           to: data_.email,
           subject: "Generisanje Izveštaja",
           // text: link,
@@ -2637,13 +2637,13 @@ app.use("/test2", async (req, res) => {
           port: 587,
           secure: false,
           auth: {
-            user: "office@nutritrans.com",
-            pass: "jezq ddqo aynu qucx",
+            user: process.env.MAILUSER,
+            pass: process.env.MAILPASS,
           },
         });
     
         var mailOptions = {
-          from: "office@nutritrans.com",
+          from: process.env.MAILUSER,
           to: data_.mail,
           subject: "Generisanje Izveštaja",
           // text: link,

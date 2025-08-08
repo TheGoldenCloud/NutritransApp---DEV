@@ -247,6 +247,12 @@ const userSchema = new mongoose.Schema({
     required: false,
     default: "",
   },
+  alergNamir: {
+    //Alergican na neku namirnicu
+    type: String,
+    required: false,
+    default: "",
+  },
   pus: {
     type: String,
     required: false,

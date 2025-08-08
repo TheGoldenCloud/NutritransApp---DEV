@@ -367,6 +367,7 @@ const updateUser = async (req, res) => {
     allergiesEnabled,
     allergyChoice,
     highlighted,
+    alergNamir,
   } = req.body;
 
   // console.log("Podaci podlsti: ", req.body);
@@ -375,6 +376,7 @@ const updateUser = async (req, res) => {
     const user = await User.findById(id).exec();
 
     user.mail = mail;
+    user.alergNamir = alergNamir;
     user.name = name;
     user.lastName = lastname;
     user.datumRodjenja = datumRodjenja;

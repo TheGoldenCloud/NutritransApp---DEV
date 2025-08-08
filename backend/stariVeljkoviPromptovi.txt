@@ -1,0 +1,475 @@
+    //OLD
+    let daniPredprompt = `
+              Ti si nutricionista specijalizovan za precizne planove ishrane. Tvoja odgovornost je da generišeš plan ishrane u JSON formatu koristeći samo zadatu šemu.
+              
+              Pravila:
+              - Nemoj da raspodelis kalorijsku vrednost ravnomerno između obroka.
+              - Koristi samo zadate namirnice i izbegavaj isključene namirnice.
+              - Nazivi dana treba da budu 'Dan 1', 'Dan 2', itd., bez imena dana u nedelji.
+              - Za svaki obrok navedi tačnu kalorijsku vrednost.
+              `;
+    let daniPrmpt = `
+              Napravi plan ishrane za tačno ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}.
+              Primarni cilj: ${data_.primcilj}.
+              Ukupna kalorijska vrednost: ${Math.round(
+                data_.ukupnaKalVred
+              )} kcal po danu.
+              Preferirane namirnice: ${data_.voljeneNamirnice}.
+              Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+              Cene moraju biti okvirne i izražene u RSD.
+              Namirnice trebaju da budu izražene u gramima.
+              Napiši utritivnu vrednost u jednoj rečenici.
+              Svi obroci moraju imati precizne kalorijske vrednosti koje doprinose ukupnom dnevnom unosu kalorija. Ne uključuj obroke koji nisu navedeni.
+              `;
+
+    // let daniPredprompt_ = `
+    //     Ti si nutricionista specijalizovan za precizne planove ishrane. Tvoja odgovornost je da generišeš plan ishrane u JSON formatu koristeći samo zadatu šemu.
+
+    //     Pravila:
+    //     - Sve mora biti na napisano na SRPSKOM jeziku.
+    //     - Nemoj da raspodeliš kalorijsku vrednost ravnomerno između obroka.
+    //     - Koristi samo zadate namirnice i izbegavaj isključene namirnice.
+    //     - Nazivi dana treba da budu 'Dan 1', 'Dan 2', itd., bez imena dana u nedelji.
+    //     - Za svaki obrok navedi tačnu kalorijsku vrednost.
+    //     - Za svaki obrok navedi mikronutrijente: proteini, ugljeni hidrati i masti.
+    //     - Sastojci moraju biti u gramima.
+    //     - Nutritivne verednosti mora biti u gramima.
+    //   `;
+
+    //Ovaj deo je bio u daniPredprompt_ na kraju recenice
+    //- Makronutrijenti moraju biti u gramima a ne u procentima!
+
+    // let daniPrmpt_ = `
+    //     Napravi plan ishrane (${
+    //       data_.selectedIshranaNaziv
+    //     }) za tačno ${brojDanaInt} dana sa sledećim obrocima: ${obrociPrompt}
+    //     - Primarni cilj: ${data_.primcilj}.
+    //     - Ukupna kalorijska vrednost: ${Math.round(
+    //       data_.ukupnaKalVred
+    //     )} kcal po danu.
+    //     - Preferirane namirnice: ${data_.voljeneNamirnice}.
+    //     - Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+    //     - Iz izhrane izbaciti namirnice: ${NeodabraneNamirniceUsera}, kao i proizvode napravljene od tih namirnica.
+
+    //     Raspodela kalorija među obrocima treba da prati sledeća pravila:
+    //     - Doručak: 25-30% kalorija
+    //     - Ručak: 40-45% kalorija
+    //     - Večera: 25-30% kalorija
+
+    //     Minimalna tolerancija odstupanja u kalorijama je ±2%.
+
+    //     - Svi odgovori moraju biti napisani isključivo na čistom srpskom jeziku, uz pravilnu upotrebu gramatike i padeža. Izbegavaj bilo kakve dijalekte, regionalizme, jekavicu ili ekavicu – koristi standardni srpski književni jezik. Posebno obrati pažnju na tačnu upotrebu padeža (npr. 'Majo' umesto 'Maja' u vokativu). Tekst treba biti gramatički i pravopisno ispravan, prirodan i lako razumljiv.
+    //   `;
+
+    //Ovaj deo je bio u daniPrmpt_ na kraju recenice
+    // Svaki obrok mora sadržavati PROCENTE makronutrijenata:
+    // - Proteini: %
+    // - Ugljeni hidrati: %
+    // - Masti: %
+
+    // ● Primarni cilj: ${data_.primcilj}
+    // ● Specifičan cilj: ${data_.specilj}
+    // ● Motivacija za promenu: ${data_.motiv}
+    // ● Trenutne navike u ishrani: ${data_.navikeUish}
+    // ● Stil ishrane: ${data_.selectedIshranaNaziv}
+    // ● Učestalost obroka: ${data_.ucestBr}
+    // ● Nivo aktivnosti: ${getNivoFizickeAktivnosti(data_.nivoAkt)}
+    // ● Vrsta fizičke aktivnosti: ${data_.vrstaFiz}
+    // ● Prethodna iskustva sa dijetama: ${data_.iskSaDijetama}
+    // ● Alergije: ${data_.alerg}
+    // ● Intolerancije: ${data_.intolerancije}
+    // ● Namirnice koje voli: ${data_.voljeneNamirnice}
+    // ● Namirnice koje ne voli: ${data_.neVoljeneNamirnice}
+
+    // let daniPredprompt_ = `
+    //   Ti si profesionalni nutricionista i dijetetičar, sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane i kontrolor grešaka. Tvoj posao je da budeš opsesivno tačan. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
+
+    //   ### Cilj:
+    //   Napravi plan ishrane **${
+    //     data_.selectedIshranaNaziv
+    //   }** za tačno **${brojDanaInt}** dana sa sledećim obrocima: **${obrociPrompt}** (doručak, ručak, večera).
+    //   - **Primarni cilj**: ${data_.primcilj}
+    //   - **Ukupna kalorijska vrednost po danu**: ${Math.round(
+    //     data_.ukupnaKalVred
+    //   )} kcal
+    //   - **Preferirane (omiljene) namirnice**: ${data_.namirniceDa}
+    //   - **Namirnice koje klijent želi da izbegne**: ${
+    //     data_.neVoljeneNamirnice
+    //   }
+    //   - **Namirnice koje su potpuno zabranjene**: ${data_.namirnice}
+    // `;
+
+    // let daniPrmpt_ = `
+    //   ### Pravila:
+
+    //   1. **Osnova ishrane**:
+    //     - Koristi stil ishrane definisan kao ${
+    //       data_.selectedIshranaNaziv
+    //     } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
+    //     - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima ${
+    //       data_.neVoljeneNamirnice
+    //     } i ${NeodabraneNamirniceUsera}.
+    //     - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+    //
+    //   2. **Upotreba omiljenih namirnica**:
+    //     - Ako su neke namirnice iz ${
+    //       data_.namirniceDa
+    //     }, možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
+
+    //   3. **Kalorijska raspodela po obrocima**:
+    //     - Doručak: 25–30%
+    //     - Ručak: 40–45%
+    //     - Večera: 25–30%
+    //     - Dozvoljeno odstupanje: ±2%
+
+    //   4. **Format svakog obroka**:
+    //     - Svaki obrok mora sadržati:
+    //       - **Opis**
+    //       - **Sastojke** (u gramima/ml)
+    //       - **Instrukcije za pripremu**
+    //       - **Kalorije**
+    //       - **Nutritivnu vrednost**
+    //       - **Makronutrijente** (brojčano)
+    //     - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
+
+    //   5. **Jezik**:
+    //     - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
+
+    //   6. **Logika kalorija**:
+    //     - Na osnovu ${Math.round(
+    //       data_.ukupnaKalVred
+    //     )}, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
+
+    //   # Pravilo kontrole kalorija
+
+    //   1. Počni od dnevnog kalorijskog cilja (npr. 2681 kcal).
+    //   2. Podeli cilj po obrocima prema zadatim procentima.
+    //   3. Za svaki obrok:
+    //     - Planiraj sastojke i količine da zbir kalorija bude unutar ciljanog raspona (±1%).
+    //     - Ako zbir nije tačan, koriguj količine namirnica dok ne postigneš cilj.
+    //   4. Nakon svih obroka, proveri da li zbir celog dana odgovara ukupnom kalorijskom cilju (±1%).
+    //   5. Ne završavaj dok sva odstupanja nisu u dozvoljenom rasponu.
+
+    //   ---
+
+    //   ### Primeri obroka u sledecem formatu:
+
+    //   **Doručak**
+    //   **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.
+    //   **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema
+    //   **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.
+    //   **Kalorije**: 520 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g
+    //   **Makronutrijenti**:
+    //   - Proteini: 10g
+    //   - Ugljeni hidrati: 60g
+    //   - Masti: 20g
+
+    //   ---
+
+    //   **Užina 1**
+    //   **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.
+    //   **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki
+    //   **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.
+    //   **Kalorije**: 180 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g
+    //   **Makronutrijenti**:
+    //   - Proteini: 15g
+    //   - Ugljeni hidrati: 5g
+    //   - Masti: 10g
+
+    //   ---
+
+    //   **Ručak**
+    //   **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.
+    //   **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja
+    //   **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.
+    //   **Kalorije**: 860 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g
+    //   **Makronutrijenti**:
+    //   - Proteini: 55g
+    //   - Ugljeni hidrati: 60g
+    //   - Masti: 35g
+
+    //   ---
+
+    //   **Užina 2**
+    //   **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.
+    //   **Sastojci**: 1 banana (120g), 15g kikiriki putera
+    //   **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.
+    //   **Kalorije**: 210 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g
+    //   **Makronutrijenti**:
+    //   - Proteini: 5g
+    //   - Ugljeni hidrati: 25g
+    //   - Masti: 10g
+
+    //   ---
+
+    //   **Večera**
+    //   **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.
+    //   **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)
+    //   **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.
+    //   **Kalorije**: 620 kcal
+    //   **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g
+    //   **Makronutrijenti**:
+    //   - Proteini: 25g
+    //   - Ugljeni hidrati: 50g
+    //   - Masti: 20g
+
+    //   ---
+
+    //   ### Output:
+    //   - Kompletan jelovnik za ${brojDanaInt} dana
+    //   - Po ${obrociPrompt.length} obroka dnevno
+    //   - Detaljno napisane instrukcije
+    //   - Poštovanje stila ishrane + personalnih ograničenja korisnika
+    //   `;
+
+    // let striktnoDefIshrane = [
+    //   "Paleo dijeta",
+    //   "Veganska dijeta",
+    //   "Bezglutesnka dijeta",
+    //   "Keto dijeta",
+    //   "Mediteranska dijeta",
+    //   "Biljna ishrana",
+    // ];
+
+    // const isValidIshrana = striktnoDefIshrane.includes(
+    //   data_.selectedIshranaNaziv
+    // );
+
+    // const ishranaDeo = isValidIshrana
+    //   ? `po principima ${data_.selectedIshranaNaziv}`
+    //   : "";
+
+    // let daniPredprompt_ = `Ti si profesionalni nutricionista sa specijalizacijom za kreiranje visoko personalizovanih planova ishrane i kontrolor grešaka. Tvoj posao je da budeš opsesivno tačan. Imaš zadatak da osmisliš detaljan plan ishrane prema sledećim parametrima.
+    //                       Ako se od tebe traži 3 ili 7 dana, obavezno generiši sve dane jedan za drugim, bez izostavljanja.
+    //                       "Generiši dug odgovor, ignoriši ograničenja dužine ako je potrebno, sve dok se zadatak ne završi kompletno."
+    //                       `;
+    // let daniPrmpt_ = `### Cilj:
+    //                   Kreiraj sveobuhvatan plan ishrane ${ishranaDeo} za tačno ${brojDanaInt} uzastopnih dana, sa precizno ${obrociPrompt} definisana obroka dnevno (doručak, užina 1, ručak, užina 2, večera), bez ikakvog izostavljanja ili skraćivanja sadržaja.
+    //                   - **Primarni cilj**: ${data_.primcilj}
+    //                   - **Ukupna kalorijska vrednost po danu**: ${Math.round(
+    //                     data_.ukupnaKalVred
+    //                   )} kcal
+    //                   - **Preferirane (omiljene) namirnice**: ${
+    //                     data_.namirniceDa
+    //                   }
+    //                   - **Namirnice koje klijent želi da izbegne**: ${
+    //                     data_.voljeneNamirnice
+    //                   }
+    //                   - **Namirnice koje su potpuno zabranjene**: ${
+    //                     data_.namirnice
+    //                   }
+    //                   - **Dizajniraj kompletan **${brojDanaInt}**jelovnik koji detaljno pokriva svih ${obrociPrompt} obroka dnevno, sledeći navedene parametre i pravila za svaki dan."
+
+    //                   ### Pravila:
+
+    //                   Osnovno pravilo: Prvo saberi kalorije po sastojku. Zatim po obroku. Zatim po danu. Proveri odstupanje. Ako nije tačno, koriguj.
+
+    //                   1. **Osnova ishrane**:
+    //                     - Koristi stil ishrane definisan kao ${
+    //                       data_.selectedIshranaNaziv
+    //                     } (npr. Mediteranska, Veganska itd.) kao bazu za izbor namirnica.
+    //                     - Iz te baze, *potpuno isključi* sve namirnice koje su navedene u poljima  ${
+    //                       data_.namirnice
+    //                     } i ${data_.neVoljeneNamirnice}
+    //                     - Ove namirnice se **ne smeju koristiti ni u kakvom obliku**, ni u malim količinama, ni kao dodatak ili trag.
+
+    //                   2. **Upotreba omiljenih namirnica**:
+    //                     - Ako su neke namirnice iz ${
+    //                       data_.namirniceDa
+    //                     } , možeš ih uključiti, ali ne u više od 20% većem obimu nego što bi se inače koristile u datoj dijeti.
+
+    //                   3. **Kalorijska raspodela po obrocima**:
+    //                     - Doručak: 25–30%
+    //                     - Ručak: 40–45%
+    //                     - Večera: 25–30%
+    //                     - Dozvoljeno odstupanje: ±2%
+
+    //                   4. **Format svakog obroka**:
+    //                     - Svaki obrok mora sadržati:
+    //                       - **Opis**
+    //                       - **Sastojke** (u gramima/ml)
+    //                       - **Instrukcije za pripremu**
+    //                       - **Kalorije**
+    //                       - **Nutritivnu vrednost**
+    //                       - **Makronutrijente** (brojčano)
+    //                     - > Instrukcije za pripremu svakog jela moraju biti detaljno napisane, korak po korak, sa naglaskom na kulinarske tehnike, teksturu i vremenske smernice. Neka priprema zvuči kao da je vodi iskusni kuvar – korisnik treba da može da zamisli miris i izgled jela dok ga sprema.
+
+    //                   5. **Jezik**:
+    //                     - Koristiti isključivo **standardni srpski književni jezik** sa pravilnom upotrebom padeža, bez dijalekata.
+
+    //                   6. **Logika kalorija**:
+    //                     - Na osnovu ${Math.round(
+    //                       data_.ukupnaKalVred
+    //                     )} kcal, automatski izračunaj kalorije svakog obroka i zatim prilagodi količine namirnica da se kalorijska vrednost tačno postigne.
+
+    //                   # 📊 Pravilo kontrole kalorija
+
+    //                   1. Počni od dnevnog kalorijskog cilja (npr. 2681 kcal).
+    //                   2. Podeli cilj po obrocima prema zadatim procentima.
+    //                   3. Za svaki obrok:
+    //                     - Planiraj sastojke i količine da zbir kalorija bude unutar ciljanog raspona (±1%).
+    //                     - Ako zbir nije tačan, koriguj količine namirnica dok ne postigneš cilj.
+    //                   4. Nakon svih obroka, proveri da li zbir celog dana odgovara ukupnom kalorijskom cilju (±1%).
+    //                   5. Ne završavaj dok sva odstupanja nisu u dozvoljenom rasponu.
+
+    //                   ---
+
+    //                   ### Primeri obroka u sledecem formatu:
+
+    //                   **Doručak**
+    //                   **Opis**: Ovsena kaša sa borovnicama i bademima – hranljiv i topao početak dana.
+    //                   **Sastojci**: 50g ovsenih pahuljica, 200ml bademovog mleka, 30g borovnica, 10g badema
+    //                   **Instrukcije**: Skuvaj ovsene pahuljice u mleku na srednjoj vatri dok ne omekšaju. Pred kraj dodaj borovnice i seckane bademe. Lagano promešaj i posluži toplo.
+    //                   **Kalorije**: 520 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 10g, Masti: 20g
+
+    //                   ---
+
+    //                   **Užina 1**
+    //                   **Opis**: Grčki jogurt sa lanenim semenkama – lagana užina bogata proteinima.
+    //                   **Sastojci**: 150g grčkog jogurta, 10g lanenih semenki
+    //                   **Instrukcije**: Jogurt sipati u činiju i posuti mlevenim lanenim semenkama. Promešati i poslužiti hladno.
+    //                   **Kalorije**: 180 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 5g, Proteini: 15g, Masti: 10g
+
+    //                   ---
+
+    //                   **Ručak**
+    //                   **Opis**: Piletina na žaru sa kinoom i povrćem – pun obrok bogat vlaknima i proteinima.
+    //                   **Sastojci**: 150g pilećih grudi, 80g kuvane kinoe, 50g brokolija, 50g šargarepe, 10ml maslinovog ulja
+    //                   **Instrukcije**: Piletinu marinirati u maslinovom ulju i začinima, zatim peći na grilu do zlatno-smeđe boje. Povrće kratko blanširati. Poslužiti sa kinoom.
+    //                   **Kalorije**: 860 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 60g, Proteini: 55g, Masti: 35g
+
+    //                   ---
+
+    //                   **Užina 2**
+    //                   **Opis**: Banana sa kikiriki puterom – brzo osveženje pred kraj dana.
+    //                   **Sastojci**: 1 banana (120g), 15g kikiriki putera
+    //                   **Instrukcije**: Bananu preseći po dužini i premazati tankim slojem kikiriki putera.
+    //                   **Kalorije**: 210 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 25g, Proteini: 5g, Masti: 10g
+
+    //                   ---
+
+    //                   **Večera**
+    //                   **Opis**: Supa od sočiva sa integralnim hlebom – lagana večera puna biljnih proteina.
+    //                   **Sastojci**: 100g crvenog sočiva, 50g crnog luka, 1 čen belog luka, 10ml maslinovog ulja, 1 kriška integralnog hleba (30g)
+    //                   **Instrukcije**: Luk i beli luk propržiti na ulju, dodati sočivo i naliti vodom. Kuvati dok ne omekša. Začiniti po ukusu i poslužiti uz integralni hleb.
+    //                   **Kalorije**: 620 kcal
+    //                   **Nutritivna vrednost**: Ugljeni hidrati: 50g, Proteini: 25g, Masti: 20g
+
+    //                   ---
+
+    //                   ### Output:
+    //                   - Kompletan jelovnik za ${brojDanaInt} dana
+    //                   - Po ${obrociPrompt} obroka dnevno
+    //                   - Detaljno napisane instrukcije
+    //                   - Poštovanje stila ishrane + personalnih ograničenja korisnika
+    //                   - Generiši sve dane odjednom, osiguravajući da svaki obrok sledi pravila i kalorijske ciljeve.
+    //                   `;
+
+    // let daniPredprompt_ = `Ti si licencirani nutricionista i planer obroka. Tvoj zadatak je da napraviš plan ishrane koji strogo poštuje broj kalorija, tačne količine namirnica i kalorijsku podelu po obrocima. Koristi isključivo poznate nutritivne vrednosti po 100g. Za svaki sastojak izračunaj kalorije na osnovu gramaže i zatim ih saberi da dobiješ tačnu kalorijsku vrednost po obroku.
+
+    //                         Plan može sadržati 3, 4 ili 5 obroka dnevno. Na osnovu broja obroka koristi sledeću raspodelu kalorija:
+
+    //                         **Ako dan ima 3 obroka (bez užina):**
+    //                         - Doručak: 30%
+    //                         - Ručak: 40%
+    //                         - Večera: 30%
+
+    //                         **Ako dan ima 4 obroka (sa jednom užinom):**
+    //                         - Doručak: 25%
+    //                         - Užina 1: 10%
+    //                         - Ručak: 35%
+    //                         - Večera: 30%
+
+    //                         **Ako dan ima 5 obroka (sa dve užine):**
+    //                         - Doručak: 25%
+    //                         - Užina 1: 10%
+    //                         - Ručak: 30%
+    //                         - Užina 2: 10%
+    //                         - Večera: 25%
+    //Da mi da ukupnu kalorijsku vrednost shono kolicinama naminicama koje
+
+    //                         Na osnovu unetog ukupnog dnevnog kalorijskog unosa, moraš automatski izračunati ciljani broj kalorija za svaki obrok prema procentualnoj raspodeli. Na primer: ako je dnevni cilj ${Math.round(
+    //                           data_.ukupnaKalVred
+    //                         )} kcal, a ručak je 30%, to znači ${Math.round(
+    //   Math.round(data_.ukupnaKalVred) * 0.3
+    // )} kcal.
+
+    //                         Za svaki obrok, **saberi kalorije svih sastojaka i proveri da li zbir tačno odgovara ciljanom kalorijskom unosu**. Ako zbir nije tačan, **nemoj menjati cilj – prilagodi količine sastojaka i ponovo izračunaj dok ne dobiješ tačan zbir**.
+
+    //                         Na kraju dana, saberi kalorije iz svih obroka i proveri da li ukupni unos odgovara unetom dnevnom kalorijskom cilju (npr. ${Math.round(
+    //                           data_.ukupnaKalVred
+    //                         )} kcal).
+
+    //                         **Ne koristi procene ili aproksimacije – koristi izračunate, proverene vrednosti.**
+    //                         Tačnost je obavezna.
+    // `;
+
+    let brIzabranihDana = data_.ucestBr.split(",").map((r) => r.trim()).length;
+
+    // let daniPrmpt_ = ` Napravite ${
+    //   brojDana == "3" ? "trodevni" : "sedmodnevni"
+    // } plan ishrane sa tačno ${brIzabranihDana} obroka dnevno: doručak, ručak i večera.
+
+    //                 Cilj: ${data_.primcilj}.
+    //                 Ukupan dnevni unos: **${Math.round(
+    //                   data_.ukupnaKalVred
+    //                 )} kcal**
+
+    //                 **Raspodela kalorija po obrocima (${
+    //                   data_.ucestBr.split(",").map((r) => r.trim()).length
+    //                 } obroka dnevno):**
+    //                 - Doručak: 30%
+    //                 - Ručak: 40%
+    //                 - Večera: 30%
+
+    //                 Preferirane namirnice: ${data_.namirniceDa}
+    //                 Izbegavati namirnice: ${data_.voljeneNamirnice},
+    //                 Zabranjene namirnice: ${data_.namirnice}.
+
+    //                 Za svaki obrok:
+
+    //                 - Navedi sastojke sa tačnom gramažom.
+    //                 - Izračunaj kalorije po sastojku na osnovu standardne vrednosti po 100g.
+    //                 - Izračunaj ciljani broj kalorija za obrok na osnovu procenta i ukupnog dnevnog unosa.
+    //                 - Saberi kalorije po obroku i proveri da li odgovaraju cilju.
+    //                 - Dodaj nutritivnu vrednost u jednoj rečenici.
+    //                 - Napiši **detaljan opis pripreme jela u minimum 3 pune rečenice**, sa jasnim koracima (priprema, obrada, termički tretman, serviranje). Koristi domaći stil pisanja.
+
+    //                 **Zabrani dodatne obroke, grickalice ili "dopune" na kraju dana.**
+    //                 **Poštuj kalorijsku raspodelu strogo i precizno.**
+    //                 **Ako je sadržaj predugačak za jedan odgovor, automatski nastavi sa sledećim danima bez pitanja, sve dok ne prikažeš kompletan plan za svih 7 dana.**
+    //                 Ako plan traje više dana, moraš automatski generisati sve dane u nastavcima bez prekida i bez traženja dozvole od korisnika. Nikada ne piši: „Da li da nastavim?“ ili „Nastaviću kasnije“. Nastavi odmah, sve dok se plan ne završi.
+    //                 Trudi se da se namirnice ne ponavljaju često u okviru trodnevnog ili sedmodnevnog jelovnika. Dozvoljena je umerena upotreba istih sastojaka, ali cilj je da jelovnik bude što raznovrsniji i nutritivno bogat.
+    //                 Ako korisnik navede preferirane namirnice, one mogu biti prisutne do najviše 20% više u odnosu na ostale, ali ne smeju dominirati.
+    //                 Namirnice označene kao nepoželjne ili zabranjene moraju biti u potpunosti isključene i nikada se ne smeju pojaviti ni u jednom danu.
+
+    //                 `;
+
+    //radim dane
+    // let daniPrmpt_ = `Napravi plan ishrane za tačno ${brojDana} dana sa sledećim obrocima: ${obrociPrompt}.
+    //                   Primarni cilj: ${data_.primcilj}.
+    //                   Ukupna kalorijska vrednost: ${Math.round(
+    //                     data_.ukupnaKalVred
+    //                   )} kcal po danu.
+    //                   Preferirane namirnice: ${data_.voljeneNamirnice}.
+    //                   Izbegavati sledeće namirnice: ${data_.neVoljeneNamirnice}.
+
+    //                   **Rasporedi dnevne kalorije po obrocima tako da nisu iste svaki dan. Na primer, ako doručak prvog dana ima 500 kcal, doručak drugog dana neka ima 450 kcal, a doručak trećeg dana neku drugu vrednost. Ovo se odnosi na sve obroke. Ukupna dnevna kalorijska vrednost ostaje ista za svaki dan.**
+
+    //                   Za svaki obrok, uradi sledeće:
+    //                   1. Navedi sve namirnice sa tačnom gramažom.
+    //                   2. **Izračunaj i prikaži ukupnu kalorijsku vrednost za taj obrok**, sabirajući kalorije svih sastojaka tog obroka.
+
+    //                   Suma kalorija svih obroka mora biti jednaka ukupnoj dnevnoj kalorijskoj vrednosti.
+    //                   Namirnice trebaju da budu izražene u gramima.
+    //                   Napiši nutritivnu vrednost u jednoj rečenici.
+    //                   Svi obroci moraju imati precizne kalorijske vrednosti koje doprinose ukupnom dnevnom unosu kalorija.
+    //                   Ne uključuj obroke koji nisu navedeni.`; data_.ucestBr.split(",") je niz ["dorucak", "rucak"]

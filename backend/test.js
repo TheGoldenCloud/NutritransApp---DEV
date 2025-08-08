@@ -1,3 +1,5 @@
+import { uz } from "date-fns/locale";
+
 let organizacije = [
   {
     idOrg: "890",
@@ -2064,7 +2066,7 @@ const [odabraneNamirnice, setOdabraneNamirnice] = useState([
   "671f6daf5997900563ceaae0",
 ]);
 
-let = {
+let dd = {
   dan: "Dan 1",
   obrok: {
     NazivObroka: "Naslov: sikgjdasjdglasf",
@@ -2348,3 +2350,46 @@ let code = {
   naziv: "RO02BE",
   idUser: "dvg9syfd8stfd",
 };
+
+// {
+//   days: [
+//     {
+//       dan: '',
+//       dorucak: {
+//         opis: '',
+//         sastojci: '',
+//         instrukcije: '',
+//         kalorije: ,
+//         Makronutrijenti: { Proteini: , Ugljeni_hidrati: , Masti:  }
+//       },
+//       uzina1: {
+//         opis: '',
+//         sastojci: '',
+//         instrukcije: '',
+//         kalorije: ,
+//         Makronutrijenti: { Proteini: , Ugljeni_hidrati: , Masti:  }
+//       },
+//       rucak: {
+//         opis: '',
+//         sastojci: '',
+//         instrukcije: '',
+//         kalorije: ,
+//         Makronutrijenti: { Proteini: , Ugljeni_hidrati: , Masti:  }
+//       },
+//       uzina2: {
+//         opis: '',
+//         sastojci: '',
+//         instrukcije: '',
+//         kalorije: 294,
+//         Makronutrijenti: { Proteini: , Ugljeni_hidrati: , Masti:  }
+//       },
+//       vecera: {
+//         opis: '',
+//         sastojci: '',
+//         instrukcije: '',
+//         kalorije: ,
+//         Makronutrijenti: { Proteini: , Ugljeni_hidrati: , Masti:  }
+//       }
+//     }
+//   ]
+// }
